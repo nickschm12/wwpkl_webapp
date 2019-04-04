@@ -1,6 +1,6 @@
 from yahoo_oauth import OAuth2
 from app import app, db
-from models import Base, League, Team, Stats
+from models import Base, League, Team, SeasonStats
 import json
 import xmltodict
 
@@ -64,7 +64,7 @@ def generate_team_stats(league,team,data):
         '1': 'N/A'
     }
 
-    stats = Stats(league,team)
+    stats = SeasonStats(league,team)
     for stat in data:
         if stat_map[stat['stat_id']] != 'N/A' and stat_map[stat['stat_id']] != 'IP':
             if stat_map[stat['stat_id']] == 'R':

@@ -32,12 +32,12 @@ class Team(Base):
         self.name = name
         self.league = league
 
-class Stats(Base):
-    __tablename__ = "stats"
+class SeasonStats(Base):
+    __tablename__ = "season_stats"
 
     id = Column(Integer, primary_key=True)
     team_id = Column(Integer, ForeignKey('teams.id'))
-    team = relationship("Team", backref="stats")
+    team = relationship("Team", backref="season_stats")
     runs = Column(Integer)
     hits = Column(Integer)
     homeruns = Column(Integer)

@@ -1,5 +1,5 @@
 import pandas as pd
-from models import Base, League, Team, Stats
+from models import Base, League, Team, SeasonStats
 from app import db
 
 def get_leagues():
@@ -11,7 +11,7 @@ def get_teams():
         .filter(League.year == '2018')
 
 def get_team_stats(year):
-    query = str.format("select teams.name,stats.* from (stats join teams on stats.team_id = teams.id)" \
+    query = str.format("select teams.name,season_stats.* from (season_stats join teams on season_stats.team_id = teams.id)" \
             " join leagues on teams.league_id = leagues.league_id where leagues.year = '{0}'", year)
     data_frame = pd.read_sql_query(query, con=db.engine)
     return data_frame
