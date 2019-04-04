@@ -25,7 +25,7 @@ def calculate_roto_standings(data_frame):
     for stat in stat_names:
         key = str.format('{0}_rank', stat)
 
-        if key in ['loses','era','whip']:
+        if stat in ['loses','era','whip']:
             data_frame[key] = data_frame[stat].rank(ascending=False)
         else:
             data_frame[key] = data_frame[stat].rank()
