@@ -1,24 +1,19 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import pandas as pd
 from models import Base, League, Team, Stats
-
-engine = create_engine('postgresql://localhost/wwpkl')
-Session = sessionmaker(bind=engine)
-session = Session()
+from app import db
 
 def get_leagues():
-    session.query(League).all()
+    db.session.query(League).all()
 
 def get_teams():
-    return session.query(Team) \
+    return db.session.query(Team) \
         .join(League, Team.league_id == League.league_id) \
         .filter(League.year == '2018')
 
 def get_team_stats(year):
     query = str.format("select teams.name,stats.* from (stats join teams on stats.team_id = teams.id)" \
             " join leagues on teams.league_id = leagues.league_id where leagues.year = '{0}'", year)
-    data_frame = pd.read_sql_query(query, con=engine)
+    data_frame = pd.read_sql_query(query, con=db.engine)
     return data_frame
 
 def calculate_roto_standings(data_frame):

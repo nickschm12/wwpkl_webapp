@@ -1,7 +1,8 @@
 from yahoo_oauth import OAuth2
+from app import app, db
+from models import Base, League, Team, Stats
 import json
 import xmltodict
-from models import Session, engine, Base, League, Team, Stats
 
 def query(url):
     xml_response = oauth.session.get(url)
@@ -25,7 +26,7 @@ def create_leagues():
                     year = l['season'].encode('utf-8').strip()
                     num_of_teams = l['num_teams'].encode('utf-8').strip()
                     new_league = League(league_id,name,year,int(num_of_teams))
-                    session.add(new_league)
+                    db.session.add(new_league)
                     leagues.append(new_league)
     return leagues
 
@@ -39,7 +40,7 @@ def create_teams(league):
         team_data = data['fantasy_content']['team']
         name = team_data['name'].encode('utf-8').strip()
         new_team = Team(team_key,name,league)
-        session.add(new_team)
+        db.session.add(new_team)
         generate_team_stats(league,new_team,team_data['team_stats']['stats']['stat'])
 
 def generate_team_stats(league,team,data):
@@ -98,20 +99,16 @@ def generate_team_stats(league,team,data):
             elif stat_map[stat['stat_id']] == 'WHIP':
                 if stat['value'] != '-':
                     stats.whip = float(stat['value'])
-    session.add(stats)
+    db.session.add(stats)
 
 oauth = OAuth2(None, None, from_file='oauth2.json')
 if not oauth.token_is_valid():
     oauth.refresh_access_token()
 
-Base.metadata.create_all(engine)
-session = Session()
-
+Base.metadata.create_all(db.engine)
 leagues = create_leagues()
 for l in leagues:
     create_teams(l)
 
-session.commit()
-session.close()
-
-
+db.session.commit()
+db.session.close()

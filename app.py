@@ -1,12 +1,7 @@
 from flask import Flask, render_template
-from flask_sqlalchemy import SQLAlchemy
+from app import app,db
 from queries import get_team_stats,calculate_roto_standings
 import pandas as pd
-
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/wwpkl'
-db = SQLAlchemy(app)
 
 @app.route('/')
 def index():
