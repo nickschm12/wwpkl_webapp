@@ -1,6 +1,6 @@
 import pandas as pd
 from models import Base, League, Team, SeasonStats
-from app import db
+from application import db
 
 def get_leagues():
     db.session.query(League).all()

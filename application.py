@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from app import app,db
+from application import app,db
 from queries import get_team_stats,calculate_roto_standings
 import pandas as pd
 
