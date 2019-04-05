@@ -1,5 +1,5 @@
 from yahoo_oauth import OAuth2
-from app import app, db
+from app import db
 from models import Base, League, Team, SeasonStats
 import json
 import xmltodict
