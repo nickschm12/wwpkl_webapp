@@ -3,3 +3,8 @@ env
 .DS_Store
 .idea
 oauth2.json
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
