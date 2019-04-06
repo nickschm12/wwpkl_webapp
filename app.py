@@ -1,14 +1,17 @@
 from flask import Flask, render_template
-from app import application,db
-from queries import get_team_stats,calculate_roto_standings
+from app import application,scheduler,db
+from queries import get_season_stats,update_season_stats,calculate_roto_standings
 import pandas as pd
+
+scheduler.add_job(func=update_season_stats, args=['2019'], trigger="interval", hours=8)
+scheduler.start()
 
 @application.route('/')
 def index():
     columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
                'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
                'Total Rank']
-    stats = get_team_stats('2019')
+    stats = get_season_stats('2019')
     roto = calculate_roto_standings(stats)
     roto.columns = columns
     return render_template('index.html', tables=[roto.to_html(index=False, classes=['table-striped','table'])])
