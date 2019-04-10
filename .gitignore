@@ -2,7 +2,6 @@ env
 *.pyc
 .DS_Store
 .idea
-oauth2.json
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
