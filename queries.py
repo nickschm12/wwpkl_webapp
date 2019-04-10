@@ -46,6 +46,7 @@ def update_season_stats(year):
 
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
 
+        db.session.merge(stats)
         db.session.commit()
 
 def calculate_roto_standings(data_frame):
