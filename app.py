@@ -3,7 +3,7 @@ from app import application,scheduler,db
 from queries import get_season_stats,update_season_stats,calculate_roto_standings
 import pandas as pd
 
-scheduler.add_job(func=update_season_stats, args=['2019'], trigger="interval", minutes=60)
+scheduler.add_job(func=update_season_stats, args=['2019'], trigger="interval", minutes=10)
 scheduler.start()
 
 @application.route('/')

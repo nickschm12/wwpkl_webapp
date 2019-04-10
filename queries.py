@@ -45,7 +45,7 @@ def update_season_stats(year):
             .filter(Team.id == t.id).one()
 
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
-        db.session.flush()
+
         db.session.commit()
 
 def calculate_roto_standings(data_frame):
