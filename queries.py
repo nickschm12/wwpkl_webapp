@@ -4,75 +4,83 @@ import pandas as pd
 from models import Base, League, Team, SeasonStats
 from app import db, oauth
 
-def query(url):
+"""
+Query the yahoo_api for whatever is specified in the url
+"""
+def query_yahoo(url):
+    # refresh oauth token if needed
     if not oauth.token_is_valid():
         oauth.refresh_access_token()
 
+    # query the yahoo api, convert xml to json and return
     xml_response = oauth.session.get(url)
     json_response = json.dumps(xmltodict.parse(xml_response.content))
     return json.loads(json_response)
 
+"""
+Query the database for a specific league
+"""
 def get_league(year):
     return db.session.query(League).filter(League.year == year).one()
 
+"""
+Query the database for a all leagues
+"""
 def get_all_leagues():
     return db.session.query(League).all()
 
+"""
+Query the database for all teams in a given year
+"""
 def get_teams(year):
     return db.session.query(Team) \
         .join(League, Team.league_id == League.league_id) \
         .filter(League.year == year).all()
 
+"""
+Query the database for season stats for all teams in a given year
+"""
 def get_season_stats(year):
     query = str.format("select teams.name,season_stats.* from (season_stats join teams on season_stats.team_id = teams.id)" \
             " join leagues on teams.league_id = leagues.league_id where leagues.year = '{0}'", year)
     data_frame = pd.read_sql_query(query, con=db.engine)
     return data_frame
 
+"""
+Update every team's season stats in the database for a given year
+"""
 def update_season_stats(year):
     print str.format("Updating season stats for {}", year)
+
+    # get the SQLAlchemy objects for the league and all teams in a given year
     league = get_league(year)
     teams = get_teams(year)
+
     for t in teams:
+        # build the url to get season stats
         base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
         url = str.format('{0}/team/{1}.t.{2}/stats', base_url, league.league_id, t.team_key)
         data = query(url)
 
+        # retrieve the stats object for that team and year
         stats = db.session.query(SeasonStats) \
             .join(Team, SeasonStats.team_id == Team.id) \
             .join(League, Team.league_id == League.league_id) \
             .filter(League.year == year) \
             .filter(Team.id == t.id).one()
 
+        # transform data for the season_stats table
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
 
+        # update the database with up to date stats
         db.session.merge(stats)
         db.session.commit()
 
-def calculate_roto_standings(data_frame):
-    stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'avg', 'ops',
-                  'wins', 'loses', 'saves', 'strikeouts', 'holds', 'era', 'whip']
-    batting_ranks = ['runs_rank','hits_rank','homeruns_rank','rbis_rank','stolen_bases_rank','avg_rank','ops_rank']
-    pitching_ranks = ['wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']
-
-    for stat in stat_names:
-        key = str.format('{0}_rank', stat)
-
-        if stat in ['loses','era','whip']:
-            data_frame[key] = data_frame[stat].rank(ascending=False)
-        else:
-            data_frame[key] = data_frame[stat].rank()
-
-    data_frame['Batting Total Rank'] = data_frame[batting_ranks].sum(axis=1)
-    data_frame['Pitching Total Rank'] = data_frame[pitching_ranks].sum(axis=1)
-    data_frame['Total Rank'] = data_frame[['Batting Total Rank','Pitching Total Rank']].sum(axis=1)
-
-    final_df = data_frame[['name','runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'avg', 'ops', 'Batting Total Rank',
-                          'wins', 'loses', 'saves', 'strikeouts', 'holds', 'era', 'whip', 'Pitching Total Rank',
-                           'Total Rank']]
-    return final_df.sort_values(['Total Rank'],ascending=[0])
-
+"""
+Helper function that takes the raw yahoo data and translates into the preferred format for the tables
+"""
 def generate_team_stats(stats,data):
+    # Yahoo gives a stat id and not a stat name so this dictionary maps the stat id to the stat name
     stat_map = {
         '7': 'R',
         '8': 'H',
@@ -93,8 +101,12 @@ def generate_team_stats(stats,data):
         '1': 'N/A'
     }
 
+    # run through all the stats retrieve from yahoo and update the corresponding field for the SeasonStats object
     for stat in data:
         if stat_map[stat['stat_id']] != 'N/A' and stat_map[stat['stat_id']] != 'IP':
+            if stat['value'] == None:
+                stat['value'] = '0'
+
             if stat_map[stat['stat_id']] == 'R':
                 stats.runs = int(stat['value'])
             elif stat_map[stat['stat_id']] == 'H':
