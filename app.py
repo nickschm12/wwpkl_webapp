@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from app import application,scheduler,db
+from app import application,scheduler
 from queries import get_season_stats,update_season_stats,calculate_roto_standings
 import pandas as pd
 

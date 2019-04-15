@@ -1,8 +1,11 @@
 import json
 import xmltodict
 import pandas as pd
+from flask_sqlalchemy import SQLAlchemy
 from models import Base, League, Team, SeasonStats
-from app import db, oauth
+from app import application, oauth
+
+db = SQLAlchemy(application)
 
 def query(url):
     if not oauth.token_is_valid():
