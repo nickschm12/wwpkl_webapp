@@ -70,3 +70,44 @@ class SeasonStats(Base):
         self.holds = 0
         self.era = 0.000
         self.whip = 0.000
+
+class WeekStats(Base):
+    __tablename__ = "week_stats"
+
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey('teams.id'))
+    team = relationship("Team", backref="week_stats")
+    week = Column(Integer)
+    runs = Column(Integer)
+    hits = Column(Integer)
+    homeruns = Column(Integer)
+    rbis = Column(Integer)
+    stolen_bases = Column(Integer)
+    avg = Column(Float)
+    ops = Column(Float)
+    wins = Column(Integer)
+    loses = Column(Integer)
+    saves = Column(Integer)
+    strikeouts = Column(Integer)
+    holds = Column(Integer)
+    era = Column(Float)
+    whip = Column(Float)
+
+    def __init__(self, league, team, week):
+        self.league = league
+        self.team = team
+        self.week = week
+        self.runs = 0
+        self.hits = 0
+        self.homeruns = 0
+        self.rbis = 0
+        self.stolen_bases = 0
+        self.avg = 0.000
+        self.ops = 0.000
+        self.wins = 0
+        self.loses = 0
+        self.saves = 0
+        self.strikeouts = 0
+        self.holds = 0
+        self.era = 0.000
+        self.whip = 0.000
