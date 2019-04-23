@@ -63,7 +63,7 @@ def update_season_stats(year):
         # build the url to get season stats
         base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
         url = str.format('{0}/team/{1}.t.{2}/stats', base_url, league.league_id, t.team_key)
-        data = query(url)
+        data = query_yahoo(url)
 
         # retrieve the stats object for that team and year
         stats = db.session.query(SeasonStats) \
