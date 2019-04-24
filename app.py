@@ -40,7 +40,7 @@ def index():
     stats = get_season_stats(year)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('index.html', seasons=seasons, tables=[roto.to_html(index=False, classes=['table-striped','table','table-bordered'])])
+    return render_template('index.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
 
 if __name__ == '__main__':
     application.run()
