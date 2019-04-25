@@ -39,7 +39,7 @@ def index():
     stats = get_season_stats(year)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('index.html', tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
+    return render_template('index.html', tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
 
 @application.route('/previous_seasons', methods=['GET','POST'])
 def previous_seasons():
@@ -51,7 +51,7 @@ def previous_seasons():
     stats = get_season_stats(year)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('previous_seasons.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
+    return render_template('previous_seasons.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
 
 if __name__ == '__main__':
     application.run()

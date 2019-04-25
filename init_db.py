@@ -1,7 +1,6 @@
 from yahoo_oauth import OAuth2
-from app import db
 from models import Base, League, Team, SeasonStats, WeekStats
-from queries import query_yahoo,generate_team_stats
+from queries import query_yahoo,generate_team_stats,db
 import json
 import xmltodict
 
@@ -74,7 +73,8 @@ def main():
     for t in teams:
         create_season_stats(t.league,t)
 # Support for this will be coming soon
-#        create_week_stats(t.league,t)
+        if t.league.year == '2019':
+            create_week_stats(t.league,t)
 
     db.session.commit()
     db.session.close()
