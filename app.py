@@ -32,7 +32,18 @@ def calculate_roto_standings(data_frame):
 
 @application.route('/', methods=['GET','POST'])
 def index():
-    seasons = ['2015','2016','2017','2018','2019']
+    columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
+               'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
+               'Total Rank']
+    year = '2019'
+    stats = get_season_stats(year)
+    roto = calculate_roto_standings(stats)
+    roto.columns = columns
+    return render_template('index.html', tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
+
+@application.route('/previous_seasons', methods=['GET','POST'])
+def previous_seasons():
+    seasons = ['2015','2016','2017','2018']
     columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
                'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
                'Total Rank']
@@ -40,7 +51,7 @@ def index():
     stats = get_season_stats(year)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('index.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
+    return render_template('previous_seasons.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact'])])
 
 if __name__ == '__main__':
     application.run()
