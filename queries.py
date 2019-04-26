@@ -2,7 +2,7 @@ import json
 import xmltodict
 import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
-from models import Base, League, Team, SeasonStats
+from models import Base, League, Team, SeasonStats, WeekStats
 from app import application, oauth
 
 db = SQLAlchemy(application)
@@ -31,6 +31,19 @@ Query the database for a all leagues
 """
 def get_all_leagues():
     return db.session.query(League).all()
+
+"""
+Query Yahoo API to figure out what the current week is
+"""
+def get_current_week(year):
+    league = get_league(year)
+
+    base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+    league_url = str.format('{0}/league/{1}', base_url, league.league_id)
+    league_data = query_yahoo(league_url)
+    num_weeks = int(league_data['fantasy_content']['league']['current_week'])
+
+    return num_weeks
 
 """
 Query the database for all teams in a given year
@@ -71,6 +84,46 @@ def update_season_stats(year):
             .join(League, Team.league_id == League.league_id) \
             .filter(League.year == year) \
             .filter(Team.id == t.id).one()
+
+        # transform data for the season_stats table
+        generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
+
+        # update the database with up to date stats
+        db.session.merge(stats)
+        db.session.commit()
+
+"""
+Query the database for week stats for all teams in a given year and week
+"""
+def get_week_stats(year, week):
+    query = str.format("select t.name, w.* from (week_stats as w join teams as t on w.team_id = t.id)"\
+            " join leagues as l on t.league_id = l.league_id where l.year = '{0}' and w.week = '{1}'", year, week)
+    data_frame = pd.read_sql_query(query, con=db.engine)
+    return data_frame
+
+"""
+Update every team's weekly stats in the database for a given year in the current week
+"""
+def update_week_stats(year):
+    # get the SQLAlchemy objects for the league and all teams in a given year
+    league = get_league(year)
+    teams = get_teams(year)
+    week = get_current_week(year)
+
+    print str.format("Updating week stats for {0} in {1}", week, year)
+
+    for t in teams:
+        # build the url to get season stats
+        base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+        url = str.format('{0}/team/{1}.t.{2}/stats;type=week;week={3}', base_url, league.league_id, t.team_key, week)
+        data = query_yahoo(url)
+
+        # retrieve the stats object for that team and year
+        stats = db.session.query(WeekStats) \
+            .join(Team, WeekStats.team_id == Team.id) \
+            .join(League, Team.league_id == League.league_id) \
+            .filter(League.year == year) \
+            .filter(Team.id == t.id).filter(WeekStats.week == week).one()
 
         # transform data for the season_stats table
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])

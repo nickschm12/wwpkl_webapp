@@ -49,13 +49,13 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
-        <li class="nav-item active">
+        <li class="nav-item">
           <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="/previous_seasons">Previous Seasons</a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item active">
           <a class="nav-link" href="/week_by_week">Week By Week</a>
         </li>
       </ul>
@@ -63,9 +63,26 @@
   </nav>
   <body>
     <div class="container">
-      <h2>Current Roto Standings</h2>
+      <h2>Week By Week Roto Standings</h2>
+      <form method="POST" action="{{ url_for('week_by_week') }}">
+          <div class="form-group">
+              <label for="seasonSelect">Seasons</label>
+              <select name="seasons" class="form-control">
+                  {% for season in seasons %}
+                  <option value="{{season}}" SELECTED>{{season}}</option>"
+                  {% endfor %}
+              </select>
+              <label for="weekSelect">Weeks</label>
+              <select name="weeks" class="form-control">
+                  {% for week in weeks %}
+                  <option value="{{week}}">{{week}}</option>"
+                  {% endfor %}
+              </select>
+          </div>
+          <button type="submit" class="btn btn-outline-primary">Go</button>
+      </form>
       {% for table in tables %}
-          {{ table|safe }}
+        {{ table|safe }}
       {% endfor %}
     </div>
   </body>

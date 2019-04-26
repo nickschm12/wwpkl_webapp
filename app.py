@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request
 from app import application,scheduler
-from queries import get_season_stats,update_season_stats
+from queries import get_season_stats,update_season_stats,get_week_stats,update_week_stats
 import pandas as pd
 
 scheduler.add_job(func=update_season_stats, args=['2019'], trigger="interval", minutes=10)
+scheduler.add_job(func=update_week_stats, args=['2019'], trigger="interval", minutes=10)
 scheduler.start()
 
 def calculate_roto_standings(data_frame):
@@ -52,6 +53,24 @@ def previous_seasons():
     roto = calculate_roto_standings(stats)
     roto.columns = columns
     return render_template('previous_seasons.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
+
+@application.route('/week_by_week', methods=['GET','POST'])
+def week_by_week():
+    seasons = ['2019']
+    weeks = list(range(1,26))
+
+    columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
+               'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
+               'Total Rank']
+    year = request.form.get('seasons')
+    week = request.form.get('weeks')
+    if week:
+        stats = get_week_stats(year, week)
+    else:
+        stats = get_week_stats(year, 1)
+    roto = calculate_roto_standings(stats)
+    roto.columns = columns
+    return render_template('week_by_week.html', seasons=seasons, weeks=weeks, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
 
 if __name__ == '__main__':
     application.run()
