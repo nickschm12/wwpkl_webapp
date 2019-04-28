@@ -89,8 +89,9 @@ def update_season_stats(year):
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
 
         # update the database with up to date stats
-        db.session.merge(stats)
+        db.session.add(stats)
         db.session.commit()
+        db.session.close()
 
 """
 Query the database for week stats for all teams in a given year and week
@@ -129,8 +130,9 @@ def update_week_stats(year):
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
 
         # update the database with up to date stats
-        db.session.merge(stats)
+        db.session.add(stats)
         db.session.commit()
+        db.session.close()
 
 """
 Helper function that takes the raw yahoo data and translates into the preferred format for the tables
