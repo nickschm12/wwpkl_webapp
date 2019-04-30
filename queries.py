@@ -4,6 +4,7 @@ import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
 from models import Base, League, Team, SeasonStats, WeekStats
 from app import application, oauth
+import logging
 
 db = SQLAlchemy(application)
 
@@ -36,14 +37,26 @@ def get_all_leagues():
 Query Yahoo API to figure out what the current week is
 """
 def get_current_week(year):
+    # retrieve the league for a given year
     league = get_league(year)
 
+    # build the url for getting league data and query the YahooAPI
     base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
     league_url = str.format('{0}/league/{1}', base_url, league.league_id)
     league_data = query_yahoo(league_url)
-    num_weeks = int(league_data['fantasy_content']['league']['current_week'])
 
-    return num_weeks
+    # output the YahooAPI response
+    msg = str.format("YahooAPI returned: {}", league_data)
+    application.logger.info(msg)
+
+    # define the current week if we get the proper response from Yahoo and default to 1 if not
+    current_week = 1
+    if 'fantasy_content' in league_data:
+        current_week = int(league_data['fantasy_content']['league']['current_week'])
+    else:
+        application.logger.warning("YahooAPI didn't return expected result: defaulting to 1")
+
+    return current_week
 
 """
 Query the database for all teams in a given year
@@ -66,8 +79,6 @@ def get_season_stats(year):
 Update every team's season stats in the database for a given year
 """
 def update_season_stats(year):
-    print str.format("Updating season stats for {}", year)
-
     # get the SQLAlchemy objects for the league and all teams in a given year
     league = get_league(year)
     teams = get_teams(year)
@@ -77,6 +88,15 @@ def update_season_stats(year):
         base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
         url = str.format('{0}/team/{1}.t.{2}/stats', base_url, league.league_id, t.team_key)
         data = query_yahoo(url)
+
+        # output the YahooAPI response
+        msg = str.format("YahooAPI returned: {}", data)
+        application.logger.info(msg)
+
+        # return 1 if Yahoo didnt provide the expected response
+        if 'fantasy_content' not in data:
+            application.logger.warning("YahooAPI didn't return expected result, returning 1")
+            return 1
 
         # retrieve the stats object for that team and year
         stats = db.session.query(SeasonStats) \
@@ -91,6 +111,8 @@ def update_season_stats(year):
         # update the database with up to date stats
         db.session.merge(stats)
         db.session.commit()
+
+        return 0
 
 """
 Query the database for week stats for all teams in a given year and week
@@ -110,13 +132,20 @@ def update_week_stats(year):
     teams = get_teams(year)
     week = get_current_week(year)
 
-    print str.format("Updating week stats for {0} in {1}", week, year)
-
     for t in teams:
         # build the url to get season stats
         base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
         url = str.format('{0}/team/{1}.t.{2}/stats;type=week;week={3}', base_url, league.league_id, t.team_key, week)
         data = query_yahoo(url)
+
+        # output the YahooAPI response
+        msg = str.format("YahooAPI returned: {}", data)
+        application.logger.info(msg)
+
+        # return 1 if Yahoo didnt provide the expected response
+        if 'fantasy_content' not in data:
+            application.logger.warning("YahooAPI didn't return expected result, returning 1")
+            return 1
 
         # count how many entries there are for the current week
         entry_count = db.session.query(WeekStats).filter(WeekStats.week == week).count()
@@ -140,6 +169,8 @@ def update_week_stats(year):
         # update the database with up to date stats
         db.session.merge(stats)
         db.session.commit()
+
+    return 0
 
 """
 Helper function that takes the raw yahoo data and translates into the preferred format for the tables
