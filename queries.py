@@ -118,12 +118,21 @@ def update_week_stats(year):
         url = str.format('{0}/team/{1}.t.{2}/stats;type=week;week={3}', base_url, league.league_id, t.team_key, week)
         data = query_yahoo(url)
 
-        # retrieve the stats object for that team and year
-        stats = db.session.query(WeekStats) \
-            .join(Team, WeekStats.team_id == Team.id) \
-            .join(League, Team.league_id == League.league_id) \
-            .filter(League.year == year) \
-            .filter(Team.id == t.id).filter(WeekStats.week == week).one()
+        # count how many entries there are for the current week
+        entry_count = db.session.query(WeekStats).filter(WeekStats.week == week).count()
+
+        # if a week has been added to the DB there should be 12 entries
+        # if the entries dont add up to 12 then add the weeks to the DB
+        stats = None
+        if entry_count < 12:
+            stats = WeekStats(league, t, week)
+        else:
+            # retrieve the stats object for that team and year
+            stats = db.session.query(WeekStats) \
+                .join(Team, WeekStats.team_id == Team.id) \
+                .join(League, Team.league_id == League.league_id) \
+                .filter(League.year == year) \
+                .filter(Team.id == t.id).filter(WeekStats.week == week).one()
 
         # transform data for the season_stats table
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])

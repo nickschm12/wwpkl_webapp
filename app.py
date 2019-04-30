@@ -1,11 +1,7 @@
 from flask import Flask, render_template, request
-from app import application,scheduler
+from app import application
 from queries import get_season_stats,update_season_stats,get_week_stats,update_week_stats
 import pandas as pd
-
-scheduler.add_job(func=update_season_stats, args=['2019'], trigger="interval", minutes=10)
-scheduler.add_job(func=update_week_stats, args=['2019'], trigger="interval", minutes=10)
-scheduler.start()
 
 def calculate_roto_standings(data_frame):
     # define the stat names in the database and a corresponding ranking so that we can rank the data frame
