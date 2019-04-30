@@ -33,7 +33,8 @@ def index():
                'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
                'Total Rank']
     year = '2019'
-    week = get_current_week(year)
+#    week = get_current_week(year)
+    week = 5
 
     season_stats = get_season_stats(year)
     season_roto = calculate_roto_standings(season_stats)
@@ -86,7 +87,8 @@ def week_by_week():
         year = '2019'
 
     if not week:
-        week = get_current_week(year)
+#        week = get_current_week(year)
+        week = 5
 
     stats = get_week_stats(year, week)
     roto = calculate_roto_standings(stats)
