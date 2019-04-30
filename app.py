@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from app import application
-from queries import get_season_stats,update_season_stats,get_week_stats,update_week_stats
+from queries import get_season_stats,update_season_stats,get_week_stats,update_week_stats,get_current_week
 import pandas as pd
 
 def calculate_roto_standings(data_frame):
@@ -33,10 +33,23 @@ def index():
                'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
                'Total Rank']
     year = '2019'
-    stats = get_season_stats(year)
-    roto = calculate_roto_standings(stats)
-    roto.columns = columns
-    return render_template('index.html', tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
+    week = get_current_week(year)
+
+    season_stats = get_season_stats(year)
+    season_roto = calculate_roto_standings(season_stats)
+    season_roto.columns = columns
+
+    week_stats = get_week_stats(year, week)
+    week_roto = calculate_roto_standings(week_stats)
+    week_roto.columns = columns
+
+    return render_template( 'index.html',
+                            year=year,
+                            week=week,
+                            tables=[ season_roto.to_html(table_id='season-roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap']),
+                                     week_roto.to_html(table_id='week-roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])
+                                   ]
+                           )
 
 @application.route('/previous_seasons', methods=['GET','POST'])
 def previous_seasons():
@@ -45,10 +58,18 @@ def previous_seasons():
                'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
                'Total Rank']
     year = request.form.get('seasons')
+
+    if not year:
+        year = '2018'
+
     stats = get_season_stats(year)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('previous_seasons.html', seasons=seasons, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
+    return render_template( 'previous_seasons.html',
+                            year=year,
+                            seasons=seasons,
+                            tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
+                          )
 
 @application.route('/week_by_week', methods=['GET','POST'])
 def week_by_week():
@@ -60,13 +81,23 @@ def week_by_week():
                'Total Rank']
     year = request.form.get('seasons')
     week = request.form.get('weeks')
-    if week:
-        stats = get_week_stats(year, week)
-    else:
-        stats = get_week_stats(year, 1)
+
+    if not year:
+        year = '2019'
+
+    if not week:
+        week = get_current_week(year)
+
+    stats = get_week_stats(year, week)
     roto = calculate_roto_standings(stats)
     roto.columns = columns
-    return render_template('week_by_week.html', seasons=seasons, weeks=weeks, tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])])
+    return render_template( 'week_by_week.html',
+                            year=year,
+                            week=week,
+                            seasons=seasons,
+                            weeks=weeks,
+                            tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
+                          )
 
 if __name__ == '__main__':
     application.run()

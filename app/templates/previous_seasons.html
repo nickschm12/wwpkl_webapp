@@ -63,7 +63,7 @@
   </nav>
   <body>
     <div class="container">
-      <h2>Previous Roto Standings</h2>
+      <h2>Previous Roto Standings - {{ year }}</h2>
       <form method="POST" action="{{ url_for('previous_seasons') }}">
           <div class="form-group">
               <label for="seasonSelect">Seasons</label>

@@ -38,7 +38,8 @@
 
     <script>
         $(function () {
-            $('#roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
+            $('#season-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
+            $('#week-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
         } );
     </script>
   </head>
@@ -63,10 +64,14 @@
   </nav>
   <body>
     <div class="container">
-      <h2>Current Roto Standings</h2>
-      {% for table in tables %}
-          {{ table|safe }}
-      {% endfor %}
+      <div style="padding-bottom: 20px;">
+        <h2>{{ year }} Roto Standings</h2>
+        {{ tables[0]|safe }}
+      </div>
+      <div>
+        <h2>Week {{ week }} Roto Standings</h2>
+        {{ tables[1]|safe }}
+      </div>
     </div>
   </body>
 </html>
