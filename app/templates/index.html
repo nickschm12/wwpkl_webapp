@@ -35,13 +35,8 @@
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
     <!-- MDB core JavaScript -->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.7/js/mdb.min.js"></script>
-
-    <script>
-        $(function () {
-            $('#season-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
-            $('#week-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
-        } );
-    </script>
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
   </head>
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <a class="navbar-brand" href="#">WWPKL</a>
@@ -69,9 +64,59 @@
         {{ tables[0]|safe }}
       </div>
       <div>
+        <canvas id="bar-chart" width="1000" height="500"></canvas>
+      </div>
+      <div>
         <h2>Week {{ week }} Roto Standings</h2>
         {{ tables[1]|safe }}
       </div>
     </div>
   </body>
+
+  <script>
+      $(function () {
+          $('#season-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
+          $('#week-roto-table').DataTable({searching: false, paging: false, info: false, order: [[ 17, "desc" ]]});
+      } );
+
+      new Chart(document.getElementById("bar-chart"), {
+          type: 'bar',
+          data: {
+              labels: [{% for item in labels %}
+                         "{{item|safe}}",
+                       {% endfor %}
+              ],
+              datasets: [
+                  {
+                      label: "Batting Rank",
+                      backgroundColor: '#D6E9C6',
+                      data: [{% for item in batting_ranks %}
+                               {{item}},
+                             {% endfor %}
+                      ]
+                  },
+                  {
+                      label: "Pitching Rank",
+                      backgroundColor: '#FAEBCC',
+                      data: [{% for item in pitching_ranks %}
+                               {{item}},
+                             {% endfor %}
+                      ]
+                  }
+              ]
+          },
+          options: {
+              legend: { display: true },
+              title: {
+                  display: false,
+                  text: 'Roto Season Standings'
+              },
+              scales: {
+                  xAxes: [{ stacked: true }],
+                  yAxes: [{ stacked: true }]
+              },
+              maintainAspectRatio: false,
+          }
+      });
+  </script>
 </html>

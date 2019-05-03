@@ -55,6 +55,11 @@ def index():
     season_roto = calculate_roto_standings(season_stats)
     season_roto.columns = columns
 
+    # define labels and values for the season bar chart
+    labels = season_roto[season_roto.columns[0]]
+    batting_ranks = season_roto[season_roto.columns[8]]
+    pitching_ranks = season_roto[season_roto.columns[16]]
+
     # get weekly stats and create roto standings
     week_stats = get_week_stats(year, week)
     week_roto = calculate_roto_standings(week_stats)
@@ -63,6 +68,9 @@ def index():
     return render_template( 'index.html',
                             year=year,
                             week=week,
+                            labels=labels,
+                            batting_ranks=batting_ranks,
+                            pitching_ranks=pitching_ranks,
                             tables=[ season_roto.to_html(table_id='season-roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap']),
                                      week_roto.to_html(table_id='week-roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])
                                    ]
@@ -89,9 +97,17 @@ def previous_seasons():
     roto = calculate_roto_standings(stats)
     roto.columns = columns
 
+    # define labels and values for the season bar chart
+    labels = roto[roto.columns[0]]
+    batting_ranks = roto[roto.columns[8]]
+    pitching_ranks = roto[roto.columns[16]]
+
     return render_template( 'previous_seasons.html',
                             year=year,
                             seasons=seasons,
+                            labels=labels,
+                            batting_ranks=batting_ranks,
+                            pitching_ranks=pitching_ranks,
                             tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
                           )
 
@@ -120,11 +136,18 @@ def week_by_week():
     roto = calculate_roto_standings(stats)
     roto.columns = columns
 
+    # define labels and values for the season bar chart
+    labels = roto[roto.columns[0]]
+    batting_ranks = roto[roto.columns[8]]
+    pitching_ranks = roto[roto.columns[16]]
+
     return render_template( 'week_by_week.html',
                             year=year,
                             week=week,
                             seasons=seasons,
                             weeks=weeks,
+                            batting_ranks=batting_ranks,
+                            pitching_ranks=pitching_ranks,
                             tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
                           )
 
