@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from app import application
-from queries import get_season_stats,update_season_stats,get_week_stats,update_week_stats,get_current_week
+from queries import get_season_stats,get_week_stats,get_current_week,get_teams
 import pandas as pd
 import logging
 
@@ -9,7 +9,7 @@ columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
            'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP', 'Pitching Rank',
            'Total Rank']
 
-def calculate_roto_standings(data_frame):
+def calculate_roto_standings(data_frame,with_ranks):
     # define the stat names in the database and a corresponding ranking so that we can rank the data frame
     stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'avg', 'ops',
                   'wins', 'loses', 'saves', 'strikeouts', 'holds', 'era', 'whip']
@@ -33,6 +33,9 @@ def calculate_roto_standings(data_frame):
     data_frame['Pitching Total Rank'] = data_frame[pitching_ranks].sum(axis=1)
     data_frame['Total Rank'] = data_frame[['Batting Total Rank','Pitching Total Rank']].sum(axis=1)
 
+    if with_ranks:
+        return data_frame
+
     # strip down the data frame to only the columns we are interested in
     final_df = data_frame[['name','runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'avg', 'ops', 'Batting Total Rank',
                           'wins', 'loses', 'saves', 'strikeouts', 'holds', 'era', 'whip', 'Pitching Total Rank',
@@ -52,7 +55,7 @@ def index():
 
     # get season stats and create roto standings
     season_stats = get_season_stats(year)
-    season_roto = calculate_roto_standings(season_stats)
+    season_roto = calculate_roto_standings(season_stats, False)
     season_roto.columns = columns
 
     # define labels and values for the season bar chart
@@ -62,7 +65,7 @@ def index():
 
     # get weekly stats and create roto standings
     week_stats = get_week_stats(year, week)
-    week_roto = calculate_roto_standings(week_stats)
+    week_roto = calculate_roto_standings(week_stats, False)
     week_roto.columns = columns
 
     return render_template( 'index.html',
@@ -94,7 +97,7 @@ def previous_seasons():
 
     # get stats and create roto standings
     stats = get_season_stats(year)
-    roto = calculate_roto_standings(stats)
+    roto = calculate_roto_standings(stats, False)
     roto.columns = columns
 
     # define labels and values for the season bar chart
@@ -133,7 +136,7 @@ def week_by_week():
 
     # get stats and create roto standings
     stats = get_week_stats(year, week)
-    roto = calculate_roto_standings(stats)
+    roto = calculate_roto_standings(stats, False)
     roto.columns = columns
 
     # define labels and values for the season bar chart
@@ -149,6 +152,51 @@ def week_by_week():
                             batting_ranks=batting_ranks,
                             pitching_ranks=pitching_ranks,
                             tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
+                          )
+
+@application.route('/graphs', methods=['GET','POST'])
+def graphs():
+    # define the options for dropdowns
+    year = '2019'
+    teams = []
+    results = get_teams(year)
+    for t in results:
+        teams.append(t.name)
+
+    # get user input from dropdowns
+    team = request.form.get('teams')
+
+    # default to using the first team in the list
+    if not team:
+        team = teams[0]
+
+    # output which week and year we are getting stats for
+    msg = str.format("Getting season stats for the {} season ", year)
+    application.logger.info(msg)
+
+    # get stats and create roto standings
+    stats = get_season_stats(year)
+    roto = calculate_roto_standings(stats, True)
+
+    # map each team to a row so its easier to locate
+    team_row_map = {}
+    for row in range(0,12):
+        team_row_map[roto.iloc[row]['name']] = row
+
+    # find a team's row and use its rankings for the graph
+    team_row = roto.iloc[team_row_map[team]]
+    team_rank_roto = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','stolen_bases_rank','avg_rank','ops_rank',
+                     'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
+
+    # define labels and values for the season bar chart
+    labels = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP']
+    values = team_rank_roto
+
+    return render_template( 'graphs.html',
+                            team=team,
+                            teams=teams,
+                            labels=labels,
+                            values=values
                           )
 
 if __name__ == '__main__':
