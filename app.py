@@ -154,16 +154,16 @@ def week_by_week():
                             tables=[roto.to_html(table_id='roto-table', index=False, classes=['table-striped','table','table-bordered','compact','nowrap'])]
                           )
 
-@application.route('/graphs', methods=['GET','POST'])
-def graphs():
-    # define the options for dropdowns
+@application.route('/team_info', methods=['GET','POST'])
+def team_info():
+    # define the options for the team dropdown
     year = '2019'
     teams = []
     results = get_teams(year)
     for t in results:
         teams.append(t.name)
 
-    # get user input from dropdowns
+    # get user input from the dropdown
     team = request.form.get('teams')
 
     # default to using the first team in the list
@@ -183,20 +183,32 @@ def graphs():
     for row in range(0,12):
         team_row_map[roto.iloc[row]['name']] = row
 
-    # find a team's row and use its rankings for the graph
+    # find the league average for all counting stats
+    league_avg = []
+    stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'wins', 'loses', 'saves', 'strikeouts', 'holds']
+    for stat in stat_names:
+        league_avg.append(roto[stat].mean())
+
+    # find a teams row using the team to row map and the team that was selected
     team_row = roto.iloc[team_row_map[team]]
-    team_rank_roto = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','stolen_bases_rank','avg_rank','ops_rank',
-                     'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
 
-    # define labels and values for the season bar chart
-    labels = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP']
-    values = team_rank_roto
+    # create the data frame for the radar chart
+    ranks_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP']
+    ranks = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','stolen_bases_rank','avg_rank','ops_rank',
+                      'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
 
-    return render_template( 'graphs.html',
+    # create the data frame for the horizontal bar chart
+    stats_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'W', 'L', 'SV', 'SO', 'HLD']
+    stats = team_row[['runs', 'hits', 'homeruns', 'rbis', 'stolen_bases', 'wins', 'loses', 'saves', 'strikeouts', 'holds']]
+
+    return render_template( 'team_info.html',
                             team=team,
                             teams=teams,
-                            labels=labels,
-                            values=values
+                            ranks_labels=ranks_labels,
+                            ranks=ranks,
+                            stats_labels=stats_labels,
+                            stats=stats,
+                            league_avg=league_avg
                           )
 
 if __name__ == '__main__':

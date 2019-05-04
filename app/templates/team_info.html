@@ -55,15 +55,15 @@
           <a class="nav-link" href="/week_by_week">Week By Week</a>
         </li>
         <li class="nav-item active">
-          <a class="nav-link" href="/graphs">Graphs</a>
+          <a class="nav-link" href="/team_info">Team Info</a>
         </li>
       </ul>
     </div>
   </nav>
   <body>
     <div class="container">
-      <h2>Radar Chart for {{team}}</h2>
-      <form method="POST" action="{{ url_for('graphs') }}">
+      <h2>{{team|safe}}</h2>
+      <form method="POST" action="{{ url_for('team_info') }}">
           <div class="form-group">
               <label for="teamSelect">Teams</label>
               <select name="teams" class="form-control">
@@ -74,8 +74,11 @@
           </div>
           <button type="submit" class="btn btn-outline-primary">Go</button>
       </form>
-      <div>  
+      <div style="padding-top: 20px;">  
           <canvas id="radar-chart" width="1000" height="500"></canvas>
+      </div>
+      <div style="padding-top: 20px;">
+          <canvas id="horiz-bar-chart" width="1000" height="500"></canvas> 
       </div>
     </div>
   </body>
@@ -84,7 +87,7 @@
       new Chart(document.getElementById("radar-chart"), {
           type: 'radar',
           data: {
-              labels: [{% for item in labels %}
+              labels: [{% for item in ranks_labels %}
                          "{{item|safe}}",
                        {% endfor %}
               ],
@@ -92,7 +95,7 @@
                   {
                       label: "Values",
                       backgroundColor: 'rgba(255,0,0,0.1)',
-                      data: [{% for item in values %}
+                      data: [{% for item in ranks %}
                                {{item}},
                              {% endfor %}
                       ]
@@ -102,14 +105,50 @@
           options: {
               legend: { display: false },
               title: {
-                  display: false,
-                  text: 'Graphs'
+                  display: true,
+                  text: 'Radar Chart'
               },
               scale: {
                   ticks: {
                       max: 12,
                       beginAtZero: true
                   }
+              },
+              maintainAspectRatio: false,
+          }
+      });
+
+      new Chart(document.getElementById("horiz-bar-chart"), {
+          type: 'horizontalBar',
+          data: {
+              labels: [{% for item in stats_labels %}
+                         "{{item|safe}}",
+                       {% endfor %}
+              ],
+              datasets: [
+                  {
+                      label: "{{team|safe}}",
+                      backgroundColor: 'rgba(214, 233, 198, 0.8)',
+                      data: [{% for item in stats %}
+                               {{item}},
+                             {% endfor %}
+                      ]
+                  },
+                  {
+                      label: "League Average",
+                      backgroundColor: 'rgba(250, 235, 204, 0.8)',
+                      data: [{% for item in league_avg %}
+                               {{item}},
+                             {% endfor %}
+                      ]
+                  },
+              ]
+          },
+          options: {
+              legend: { display: true },
+              title: {
+                  display: true,
+                  text: 'Team vs League Avg (Counting Stats)'
               },
               maintainAspectRatio: false,
           }
