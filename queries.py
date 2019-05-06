@@ -123,6 +123,39 @@ def get_week_stats(year, week):
     data_frame = pd.read_sql_query(query, con=db.engine)
     return data_frame
 
+def create_week_stats(year):
+    # get the SQLAlchemy objects for the league and all teams in a given year
+    league = get_league(year)
+    teams = get_teams(year)
+    week = get_current_week(year)
+
+    for t in teams:
+        # build the url to get season stats
+        base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+        url = str.format('{0}/team/{1}.t.{2}/stats;type=week;week={3}', base_url, league.league_id, t.team_key, week)
+        data = query_yahoo(url)
+
+        # output the YahooAPI response
+        msg = str.format("YahooAPI returned: {}", data)
+        application.logger.info(msg)
+
+        # return 1 if Yahoo didnt provide the expected response
+        if 'fantasy_content' not in data:
+            application.logger.warning("YahooAPI didn't return expected result, returning 1")
+            return 1
+
+        # create WeekStats object
+        stats = WeekStats(league, t, week)
+
+        # transform data for the season_stats table
+        generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
+
+        # update the database with up to date stats
+        db.session.merge(stats)
+        db.session.commit()
+
+    return 0
+
 """
 Update every team's weekly stats in the database for a given year in the current week
 """
@@ -147,21 +180,12 @@ def update_week_stats(year):
             application.logger.warning("YahooAPI didn't return expected result, returning 1")
             return 1
 
-        # count how many entries there are for the current week
-        entry_count = db.session.query(WeekStats).filter(WeekStats.week == week).count()
-
-        # if a week has been added to the DB there should be 12 entries
-        # if the entries dont add up to 12 then add the weeks to the DB
-        stats = None
-        if entry_count < 12:
-            stats = WeekStats(league, t, week)
-        else:
-            # retrieve the stats object for that team and year
-            stats = db.session.query(WeekStats) \
-                .join(Team, WeekStats.team_id == Team.id) \
-                .join(League, Team.league_id == League.league_id) \
-                .filter(League.year == year) \
-                .filter(Team.id == t.id).filter(WeekStats.week == week).one()
+        # retrieve the stats object for that team and year
+        stats = db.session.query(WeekStats) \
+            .join(Team, WeekStats.team_id == Team.id) \
+            .join(League, Team.league_id == League.league_id) \
+            .filter(League.year == year) \
+            .filter(Team.id == t.id).filter(WeekStats.week == week).one()
 
         # transform data for the season_stats table
         generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
