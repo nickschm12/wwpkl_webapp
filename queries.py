@@ -112,7 +112,7 @@ def update_season_stats(year):
         db.session.merge(stats)
         db.session.commit()
 
-        return 0
+    return 0
 
 """
 Query the database for week stats for all teams in a given year and week
