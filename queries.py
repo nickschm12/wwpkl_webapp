@@ -36,7 +36,7 @@ def get_all_leagues():
 """
 Query Yahoo API to figure out what the current week is
 """
-def get_current_week(year):
+def find_current_week(year):
     # retrieve the league for a given year
     league = get_league(year)
 
@@ -49,14 +49,39 @@ def get_current_week(year):
     msg = str.format("YahooAPI returned: {}", league_data)
     application.logger.info(msg)
 
+    current_week = None
     # define the current week if we get the proper response from Yahoo and default to 1 if not
-    current_week = 1
     if 'fantasy_content' in league_data:
         current_week = int(league_data['fantasy_content']['league']['current_week'])
     else:
         application.logger.warning("YahooAPI didn't return expected result: defaulting to 1")
 
     return current_week
+
+"""
+Query the database for the current week in a given year
+"""
+def get_current_week(year):
+    league = get_league(year)
+    return league.current_week
+
+"""
+Update current_week for a given year
+"""
+def set_current_week(year):
+    # retrieve the league for a given year
+    league = get_league(year)
+
+    # get the current week for a given year
+    current_week = find_current_week(year)
+
+    # set the current_week if yahoo returned the expected response
+    if current_week:
+        league.current_week = current_week
+
+        # update the league with proper settings
+        db.session.merge(league)
+        db.session.commit()
 
 """
 Query the database for all teams in a given year
@@ -128,6 +153,13 @@ def create_week_stats(year):
     league = get_league(year)
     teams = get_teams(year)
     week = get_current_week(year)
+
+    weeks = db.session.query(WeekStats) \
+        .filter(WeekStats.week == week).all()
+
+    if weeks:
+        application.logger.warning("Already have created weekly stats")
+        return 1
 
     for t in teams:
         # build the url to get season stats

@@ -1,6 +1,6 @@
 from yahoo_oauth import OAuth2
 from models import Base, League, Team, SeasonStats, WeekStats
-from queries import query_yahoo,generate_team_stats,db
+from queries import query_yahoo,generate_team_stats,find_current_week,db
 import json
 import xmltodict
 
@@ -21,6 +21,7 @@ def create_leagues():
                     year = l['season'].encode('utf-8').strip()
                     num_of_teams = l['num_teams'].encode('utf-8').strip()
                     new_league = League(league_id,name,year,int(num_of_teams))
+                    current_week = find_current_week(year)
                     db.session.add(new_league)
                     leagues.append(new_league)
     return leagues

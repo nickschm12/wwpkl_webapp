@@ -11,12 +11,14 @@ class League(Base):
     name = Column(String(120))
     year = Column(String(120))
     num_of_teams = Column(Integer)
+    current_week = Column(String(120))
 
-    def __init__(self, league_id, name, year, num_of_teams):
+    def __init__(self, league_id, name, year, num_of_teams, current_week):
         self.league_id = league_id
         self.name = name
         self.year = year
         self.num_of_teams = num_of_teams
+        self.current_week = current_week
 
 class Team(Base):
     __tablename__ = "teams"
