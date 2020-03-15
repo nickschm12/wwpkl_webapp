@@ -20,12 +20,11 @@ def create_leagues():
                     league_id = l['league_key'].encode('utf-8').strip()
                     year = l['season'].encode('utf-8').strip()
                     num_of_teams = l['num_teams'].encode('utf-8').strip()
-                    new_league = League(league_id,name,year,int(num_of_teams))
-                    current_week = find_current_week(year)
+                    week = l['start_week'].encode('utf-8').strip()
+                    new_league = League(league_id,name,year,int(num_of_teams),week)
                     db.session.add(new_league)
                     leagues.append(new_league)
     return leagues
-
 
 def create_teams(league):
     base_url = "https://fantasysports.yahooapis.com/fantasy/v2"

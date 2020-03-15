@@ -46,7 +46,7 @@ def calculate_roto_standings(data_frame,with_ranks):
 @application.route('/', methods=['GET','POST'])
 def index():
     # define the default values for the current year and week
-    year = '2019'
+    year = '2020'
     week = get_current_week(year)
 
     # output which week and year we are getting stats for
@@ -82,14 +82,14 @@ def index():
 @application.route('/previous_seasons', methods=['GET','POST'])
 def previous_seasons():
     # define the options for dropdowns
-    seasons = ['2015','2016','2017','2018']
+    seasons = ['2015','2016','2017','2018','2019']
 
     # get user input from the dropdown
     year = request.form.get('seasons')
 
     # the first time the page is opened year will be empty so pick a default value
     if not year:
-        year = '2018'
+        year = '2019'
 
     # output which week and year we are getting stats for
     msg = str.format("Getting previous season stats for the {} season ", year)

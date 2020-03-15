@@ -188,6 +188,54 @@ def create_week_stats(year):
 
     return 0
 
+def create_league(year):
+    base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+
+    url = str.format('{0}/users;use_login=1/games;game_codes=mlb/leagues',base_url)
+    data = query_yahoo(url)
+    seasons = data['fantasy_content']['users']['user']['games']['game']
+    print seasons
+
+    for season in seasons:
+        for l in season['leagues']['league']:
+            if type(l) is dict:
+                name = l['name'].encode('utf-8').strip()
+                if 'WWP Keeper' in name:
+                    league_year = l['season'].encode('utf-8').strip()
+                    if year == league_year:
+                        league_id = l['league_key'].encode('utf-8').strip()
+                        num_of_teams = l['num_teams'].encode('utf-8').strip()
+                        week = l['start_week'].encode('utf-8').strip()
+
+                        if not db.session.query(League).filter( League.year == year).all():
+                            new_league = League(league_id,name,year,int(num_of_teams),week)
+                            db.session.add(new_league)
+                            db.session.commit()
+
+def create_teams(league):
+    base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+
+    teams = []
+    for team_key in range(1,league.num_of_teams+1):
+        url = str.format('{0}/team/{1}.t.{2}/stats', base_url, league.league_id, team_key)
+        data = query_yahoo(url)
+        team_data = data['fantasy_content']['team']
+        name = team_data['name'].encode('utf-8').strip()
+        new_team = Team(team_key,name,league)
+        db.session.add(new_team)
+        teams.append(new_team)
+    if teams:
+        db.session.commit()
+
+def create_season_stats(league,team):
+    stats = SeasonStats(league, team)
+    base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
+    url = str.format('{0}/team/{1}.t.{2}/stats', base_url, league.league_id, team.team_key)
+    data = query_yahoo(url)
+    generate_team_stats(stats,data['fantasy_content']['team']['team_stats']['stats']['stat'])
+    db.session.add(stats)
+    db.session.commit()
+
 """
 Update every team's weekly stats in the database for a given year in the current week
 """
