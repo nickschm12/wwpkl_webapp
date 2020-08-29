@@ -157,7 +157,7 @@ def week_by_week():
 @application.route('/team_info', methods=['GET','POST'])
 def team_info():
     # define the options for the team dropdown
-    year = '2019'
+    year = '2020'
     teams = []
     results = get_teams(year)
     for t in results:
