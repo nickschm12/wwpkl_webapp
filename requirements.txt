@@ -33,7 +33,7 @@ psycopg2==2.8.2
 pyaml==19.4.1
 python-dateutil==2.8.0
 pytz==2019.1
-PyYAML==3.13
+PyYAML==5.4
 rauth==0.7.3
 requests==2.20.1
 semantic-version==2.5.0
