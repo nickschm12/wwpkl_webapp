@@ -101,7 +101,7 @@ def index():
 def week_by_week():
     season = request.form.get('season')
     if season is None:
-        season = '2019'
+        season = '2021'
 
     week = request.form.get('week')
     if week is None:

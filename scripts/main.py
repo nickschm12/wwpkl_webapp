@@ -112,7 +112,7 @@ def season_stats():
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
     if team_result == None or len(team_result) == 0:
-        continue
+        print("No teams found.")
     else:
         for team in team_result:
             data = get_team(league_result.league_id, team.team_key)
@@ -130,7 +130,7 @@ def weekly_stats():
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
     if team_result == None or len(team_result) == 0:
-        continue
+        print("No teams found.")
     else:
         for team in team_result:
             for week in range(1, league_result.current_week+1):
@@ -143,6 +143,3 @@ def weekly_stats():
                     update_weekly_stats(session,weekly_results[0],data)
                 else:
                     print("More than 1 season entry for a team. Probably an error.")
-
-weekly_stats()
-
