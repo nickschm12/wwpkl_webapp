@@ -17,7 +17,7 @@
   </head>
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <a class="navbar-brand" href="#">WWPKL</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
@@ -35,12 +35,12 @@
     </div>
   </nav>
   <body>
-    <div class="container">
+    <div class="container-fluid">
       <h2>Team Info</h2>
       <form method="POST" class="form-inline" role="form" id="lb_form">
         <div class="row mb-3">
           <div class="col-sm-4">
-                <select id='teams' name='teams' onchange="this.form.submit()" class="form-select form-select-sm">
+                <select id='teams' name='teams' onchange="this.form.submit()" class="form-select form-select-sm mb-3">
                 {% for t in teams %}
                 <option value="{{t}}" {{'selected' if team==t}}>{{t}}</option>"
                 {% endfor %}
