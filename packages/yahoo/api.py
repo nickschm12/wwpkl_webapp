@@ -54,8 +54,8 @@ def query_yahoo(url):
 
     return data
 
-def get_league(league_name, league_season):
-    url = str.format('{0}/users;use_login=1/games;game_codes=mlb/leagues',base_url)
+def get_league(league_name, league_season, sport='mlb'):
+    url = str.format('{0}/users;use_login=1/games;game_codes={1}/leagues',base_url,sport)
     data = query_yahoo(url)
     seasons = data['fantasy_content']['users']['user']['games']['game']
 
@@ -101,8 +101,8 @@ def get_teams_weekly_stats(num_teams,league_key, week):
 
     return teams
 
-def get_roster(team_json):
-    url = str.format('{0}/team/{1}/roster/players', base_url, team_json['team_key'])
+def get_roster(league_key,team_key):
+    url = str.format('{0}/team/{1}.t.{2}/roster/players', base_url, league_key, team_key)
     data = query_yahoo(url)
     roster_data = data['fantasy_content']['team']['roster']['players']['player']
     return roster_data

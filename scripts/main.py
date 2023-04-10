@@ -39,7 +39,7 @@ def generate_team_stats(data):
     return team_stats
 
 def all_leagues(request):
-    for year in ['2015','2016','2017','2018','2019','2020','2021']:
+    for year in ['2015','2016','2017','2018','2019','2020','2021','2022','2023']:
         league_data = get_league('WWP Keeper Leagues', year)
         league_result = session.query(League).filter_by(league_id=league_data['league_key']).all()
 
@@ -52,17 +52,18 @@ def all_leagues(request):
 
 
 def all_teams(request):
-    for year in ['2015','2016','2017','2018','2019','2020','2021']:
+    for year in ['2015','2016','2017','2018','2019','2020','2021','2022','2023']:
         league_result = session.query(League).filter_by(year=year).one()
         team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
         if team_result == None or len(team_result) == 0:
             team_data = get_teams(league_result.num_of_teams,league_result.league_id)
             for data in team_data:
-                insert_team(session,data['team_id'],data['name'],league_result.league_id)
+                print("%s %s %s" % (data['team_id'],data['name'],league_result.league_id))
+                #insert_team(session,data['team_id'],data['name'],league_result.league_id)
 
 def all_season_stats(request):
-    for year in ['2015','2016','2017','2018','2019','2020','2021']:
+    for year in ['2015','2016','2017','2018','2019','2020','2021','2022','2023']:
         league_result = session.query(League).filter_by(year=year).one()
         team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
@@ -80,7 +81,7 @@ def all_season_stats(request):
                     print("More than 1 season entry for a team. Probably an error.")
 
 def all_weekly_stats(request):
-    for year in ['2015','2016','2017','2018','2019']:
+    for year in ['2015','2016','2017','2018','2019','2020','2021','2022','2023']:
         league_result = session.query(League).filter_by(year=year).one()
         team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
@@ -99,15 +100,16 @@ def all_weekly_stats(request):
                         print("More than 1 season entry for a team. Probably an error.")
 
 def update_league(request):
-    year = '2021'
+    year = '2023'
     league_data = get_league('WWP Keeper Leagues', year)
     league_result = session.query(League).filter_by(league_id=league_data['league_key']).all()
+    print(league_result)
 
     if len(league_result) == 1:
         update_league(session,league_result[0],league_data['name'],year,league_data['num_of_teams'],league_data['current_week'])
 
 def season_stats(request):
-    year = '2021'
+    year = '2023'
     league_result = session.query(League).filter_by(year=year).one()
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
@@ -125,7 +127,7 @@ def season_stats(request):
                 print("More than 1 season entry for a team. Probably an error.")
 
 def weekly_stats(request):
-    year = '2021'
+    year = '2023'
     league_result = session.query(League).filter_by(year=year).one()
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
