@@ -9,8 +9,6 @@ base_url = "https://fantasysports.yahooapis.com/fantasy/v2"
 
 # takes in a request and queries yahoo for a response
 def query_yahoo(url):
-    print(url)
-
     secrets = get_secrets()
 
     # read in credentials for yahoo
@@ -23,7 +21,7 @@ def query_yahoo(url):
     while retries < 2 and success == False:
         # set up the web request
         headers = {
-            'Authorization': f'Bearer {access_token}',
+            'Authorization': 'Bearer %s' % access_token,
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         }
@@ -53,6 +51,16 @@ def query_yahoo(url):
             retries = retries + 1
 
     return data
+
+def get_leagues(league_season, sport='mlb'):
+    url = str.format('{0}/users;use_login=1/games;game_codes={1}/leagues',base_url,sport)
+    data = query_yahoo(url)
+    seasons = data['fantasy_content']['users']['user']['games']['game']
+
+    for season in seasons:
+        for l in season['leagues']['league']:
+            if type(l) is dict and league_season in l['season']:
+                print(l)
 
 def get_league(league_name, league_season, sport='mlb'):
     url = str.format('{0}/users;use_login=1/games;game_codes={1}/leagues',base_url,sport)
@@ -91,6 +99,12 @@ def get_team_weekly_stats(league_key,team_key,week):
     team_data = data['fantasy_content']['team']
     return team_data
 
+def get_team_matchup_stats(league_key, team_key, week):
+    url = str.format('{0}/team/{1}.t.{2}/matchups;week={3}', base_url, league_key, team_key, week)
+    data = query_yahoo(url)
+    team_data = data['fantasy_content']
+    return team_data
+
 def get_teams_weekly_stats(num_teams,league_key, week):
     teams = []
     for team_key in range(1,int(num_teams)+1):
@@ -111,3 +125,8 @@ def get_players(league_json, start):
     url = str.format('{0}/league/{1}/players;start={2}', base_url, league_json['league_key'], start)
     data = query_yahoo(url)
     return data['fantasy_content']['league']['players']['player']
+
+def get_scoreboard(league_key):
+    url = str.format('{0}/league/{1}/scoreboard', base_url, league_key)
+    data = query_yahoo(url)
+    return data

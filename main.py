@@ -59,7 +59,7 @@ def index():
     # define the default values for the current year and week
     season = request.form.get('season')
     if season is None:
-        season = '2023'
+        season = '2025'
 
     category = request.form.get('cat')
     if category is None:
@@ -101,7 +101,7 @@ def index():
 def week_by_week():
     season = request.form.get('season')
     if season is None:
-        season = '2022'
+        season = '2025'
 
     week = request.form.get('week')
     if week is None:
@@ -128,7 +128,7 @@ def week_by_week():
 def team_info():
     season = request.form.get('season')
     if not season:
-        season = '2023'
+        season = '2025'
 
     # define the options for the team dropdown
     teams = []

@@ -17,7 +17,7 @@ yahoo_secret_version = os.environ.get('YAHOO_SECRET_VERSION')
 def get_secrets():
     client = secretmanager.SecretManagerServiceClient()
 
-    name = f"projects/{project_id}/secrets/{yahoo_secret_id}/versions/{yahoo_secret_version}"
+    name = "projects/%s/secrets/%s/versions/%s" % (project_id, yahoo_secret_id, yahoo_secret_version)
 
     response = client.access_secret_version(request={"name": name})
     payload = response.payload.data.decode("UTF-8")
@@ -31,12 +31,11 @@ def get_app_code():
 
 # if the refresh token expires, query yahoo for a new full set of credentials and update the credentials file
 def get_new_tokens(app_code):
-    #secrets = get_secrets()
-
+    secrets = get_secrets()
     encoded = base64.b64encode((secrets['client_id'] + ':' + secrets['client_secret']).encode("utf-8"))
 
     headers = {
-        'Authorization': f'Basic {encoded.decode("utf-8")}',
+        'Authorization': 'Basic %s' % encoded.decode("utf-8"),
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     data = {
@@ -60,7 +59,7 @@ def refresh_access_token():
     encoded = base64.b64encode((secrets['client_id'] + ':' + secrets['client_secret']).encode("utf-8"))
 
     headers = {
-        'Authorization': f'Basic {encoded.decode("utf-8")}',
+        'Authorization': 'Basic %s' % encoded.decode("utf-8"),
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     data = {
