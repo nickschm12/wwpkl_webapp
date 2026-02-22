@@ -23,16 +23,21 @@
         </div>
       </div>
     </form>
+    {% if no_data %}
+    <div class="alert alert-info mt-3">No stats available yet for the {{ season }} season.</div>
+    {% else %}
     <div style="padding-top: 20px;">
       <canvas id="radar-chart" width="1000" height="500"></canvas>
     </div>
     <div style="padding-top: 20px;">
       <canvas id="horiz-bar-chart" width="1000" height="500"></canvas>
     </div>
+    {% endif %}
   </div>
 {% endblock %}
 
 {% block scripts %}
+  {% if not no_data %}
   <script>
       $('#season').on('change', function(){
           $('#teams').val('');
@@ -92,4 +97,5 @@
           }
       });
   </script>
+  {% endif %}
 {% endblock %}

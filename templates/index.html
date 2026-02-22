@@ -23,6 +23,9 @@
         </div>
       </div>
     </form>
+    {% if no_data %}
+    <div class="alert alert-info mt-3">No stats available yet for the {{ season }} season.</div>
+    {% else %}
     <div class="row mb-3">
       <div class="table-responsive">
         {{ tables[0]|safe }}
@@ -31,10 +34,12 @@
     <div class="row mb-3">
       <canvas id="bar-chart" width="1000" height="500"></canvas>
     </div>
+    {% endif %}
   </div>
 {% endblock %}
 
 {% block scripts %}
+  {% if not no_data %}
   <script>
       new Chart(document.getElementById("bar-chart"), {
           type: 'bar',
@@ -66,4 +71,5 @@
           }
       });
   </script>
+  {% endif %}
 {% endblock %}

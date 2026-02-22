@@ -72,32 +72,37 @@ def index():
 
     # get season stats and create roto standings
     season_stats = get_season_stats(engine,season)
-    season_roto = calculate_roto_standings(season_stats, False)
-    season_roto.columns = columns
+    no_data = season_stats.empty
 
-    # define labels and values for the season bar chart
-    labels = season_roto[season_roto.columns[0]]
-    batting_ranks = season_roto[season_roto.columns[8]]
-    pitching_ranks = season_roto[season_roto.columns[16]]
+    labels = []
+    batting_ranks = []
+    pitching_ranks = []
+    table_html = ''
 
-    season_roto = season_roto.sort_values(by=category, ascending=ascending)
+    if not no_data:
+        season_roto = calculate_roto_standings(season_stats, False)
+        season_roto.columns = columns
+        labels = season_roto[season_roto.columns[0]]
+        batting_ranks = season_roto[season_roto.columns[8]]
+        pitching_ranks = season_roto[season_roto.columns[16]]
+        season_roto = season_roto.sort_values(by=category, ascending=ascending)
+        table_html = season_roto.to_html(
+            table_id='season-roto-table',
+            index=False,
+            classes=['table-striped','table','table-bordered','compact','nowrap']
+        )
 
     return render_template( 'index.html',
                             active_tab='home',
                             season=season,
+                            no_data=no_data,
                             available_years=get_available_years(session),
                             labels=labels,
                             sort=category,
                             categories=columns,
                             batting_ranks=batting_ranks,
                             pitching_ranks=pitching_ranks,
-                            tables=[
-                                season_roto.to_html(
-                                    table_id='season-roto-table',
-                                    index=False,
-                                    classes=['table-striped','table','table-bordered','compact','nowrap']
-                                )
-                            ]
+                            tables=[table_html]
                            )
 
 @app.route('/week_by_week', methods=['GET','POST'])
@@ -112,21 +117,25 @@ def week_by_week():
 
     # get stats and create roto standings
     stats = get_week_stats(engine, season, week)
-    weekly_roto = calculate_roto_standings(stats, False)
-    weekly_roto.columns = columns
+    no_data = stats.empty
+
+    table_html = ''
+    if not no_data:
+        weekly_roto = calculate_roto_standings(stats, False)
+        weekly_roto.columns = columns
+        table_html = weekly_roto.to_html(
+            table_id='roto-table',
+            index=False,
+            classes=['table-striped','table','table-bordered','compact','nowrap']
+        )
 
     return render_template( 'week_by_week.html',
                             active_tab='week_by_week',
                             season=season,
                             week=week,
+                            no_data=no_data,
                             available_years=get_available_years(session),
-                            tables=[
-                                weekly_roto.to_html(
-                                    table_id='roto-table',
-                                    index=False,
-                                    classes=['table-striped','table','table-bordered','compact','nowrap']
-                                )
-                            ]
+                            tables=[table_html]
                           )
 
 @app.route('/team_info', methods=['GET','POST'])
@@ -148,41 +157,45 @@ def team_info():
 
     # get stats and create roto standings
     stats = get_season_stats(engine,season)
-    roto = calculate_roto_standings(stats, True)
+    no_data = stats.empty
 
-    # map each team to a row so its easier to locate
-    team_row_map = {}
-    for row in range(0,12):
-        team_row_map[roto.iloc[row]['name']] = row
-
-    # find the league average for all counting stats
-    league_avg = []
-    stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']
-    for stat in stat_names:
-        league_avg.append(roto[stat].mean())
-
-    # find a teams row using the team to row map and the team that was selected
-    team_row = roto.iloc[team_row_map[team]]
-
-    # create the data frame for the radar chart
     ranks_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP']
-    ranks = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','sb_rank','avg_rank','ops_rank',
-                      'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
-
-    # create the data frame for the horizontal bar chart
     stats_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'W', 'L', 'SV', 'SO', 'HLD']
-    stats = team_row[['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']]
+    ranks = []
+    team_stats = []
+    league_avg = []
+
+    if not no_data:
+        roto = calculate_roto_standings(stats, True)
+
+        # map each team to a row so its easier to locate
+        team_row_map = {}
+        for row in range(0, len(roto)):
+            team_row_map[roto.iloc[row]['name']] = row
+
+        # find the league average for all counting stats
+        stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']
+        for stat in stat_names:
+            league_avg.append(roto[stat].mean())
+
+        # find a teams row using the team to row map and the team that was selected
+        team_row = roto.iloc[team_row_map[team]]
+
+        ranks = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','sb_rank','avg_rank','ops_rank',
+                          'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
+        team_stats = team_row[['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']]
 
     return render_template( 'team_info.html',
                             active_tab='team_info',
                             team=team,
                             season=season,
+                            no_data=no_data,
                             available_years=get_available_years(session),
                             teams=teams,
                             ranks_labels=ranks_labels,
                             ranks=ranks,
                             stats_labels=stats_labels,
-                            stats=stats,
+                            stats=team_stats,
                             league_avg=league_avg
                           )
 

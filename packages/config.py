@@ -1,4 +1,4 @@
-CURRENT_YEAR = '2025'
+CURRENT_YEAR = '2026'
 
 # Yahoo gives a stat id and not a stat name so this dictionary maps the stat id to the stat name
 STAT_ID_TO_CAT = {
