@@ -35,7 +35,11 @@
     </div>
     {% endif %}
     <div class="row mb-3">
-      <canvas id="bar-chart" width="1000" height="500"></canvas>
+      <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div style="min-width: 500px; height: 500px; position: relative;">
+          <canvas id="bar-chart"></canvas>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -150,6 +154,7 @@
                   x: { stacked: true },
                   y: { stacked: true }
               },
+              responsive: true,
               maintainAspectRatio: false,
           }
       });

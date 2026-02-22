@@ -26,11 +26,15 @@
     {% if no_data %}
     <div class="alert alert-info mt-3">No stats available yet for the {{ season }} season.</div>
     {% else %}
-    <div style="padding-top: 20px;">
-      <canvas id="radar-chart" width="1000" height="500"></canvas>
+    <div style="padding-top: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+      <div style="min-width: 300px; height: 400px; position: relative;">
+        <canvas id="radar-chart"></canvas>
+      </div>
     </div>
-    <div style="padding-top: 20px;">
-      <canvas id="horiz-bar-chart" width="1000" height="500"></canvas>
+    <div style="padding-top: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+      <div style="min-width: 300px; height: 400px; position: relative;">
+        <canvas id="horiz-bar-chart"></canvas>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -66,6 +70,7 @@
                       beginAtZero: true
                   }
               },
+              responsive: true,
               maintainAspectRatio: false,
           }
       });
@@ -93,6 +98,7 @@
                   legend: { display: true },
                   title: { display: true, text: 'Team vs League Avg (Counting Stats)' },
               },
+              responsive: true,
               maintainAspectRatio: false,
           }
       });

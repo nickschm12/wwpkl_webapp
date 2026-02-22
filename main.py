@@ -110,7 +110,7 @@ def index():
         table_html = season_roto.to_html(
             table_id='season-roto-table',
             index=False,
-            classes=['table-striped','table','table-bordered','compact','nowrap']
+            classes=['table-striped','table','table-bordered','table-sm','compact','nowrap']
         )
 
         # Compute cumulative week-by-week rank data for line chart
@@ -181,7 +181,7 @@ def week_by_week():
         table_html = weekly_roto.to_html(
             table_id='roto-table',
             index=False,
-            classes=['table-striped','table','table-bordered','compact','nowrap']
+            classes=['table-striped','table','table-bordered','table-sm','compact','nowrap']
         )
 
     return render_template( 'week_by_week.html',
