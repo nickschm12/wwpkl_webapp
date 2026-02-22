@@ -29,7 +29,6 @@ def generate_team_stats(data):
             continue
 
         value = stat['value']
-        value = stat['value']
         if value is None:
             value = '0'
 
@@ -46,7 +45,7 @@ def generate_team_stats(data):
     return team_stats
 
 def update_league(request):
-    year = '2025'
+    year = config.CURRENT_YEAR
     league_data = get_league('WWP Keeper Leagues', year)
     league_result = session.query(League).filter_by(league_id=league_data['league_key']).all()
     print(league_result)
@@ -55,7 +54,7 @@ def update_league(request):
         update_league(session,league_result[0],league_data['name'],year,league_data['num_of_teams'],league_data['current_week'])
 
 def season_stats(request):
-    year = '2025'
+    year = config.CURRENT_YEAR
     league_result = session.query(League).filter_by(year=year).one()
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 
@@ -73,7 +72,7 @@ def season_stats(request):
                 print("More than 1 season entry for a team. Probably an error.")
 
 def weekly_stats(request):
-    year = '2025'
+    year = config.CURRENT_YEAR
     league_result = session.query(League).filter_by(year=year).one()
     team_result = session.query(Team).filter_by(league_id=league_result.league_id).all()
 

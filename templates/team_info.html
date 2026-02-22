@@ -1,105 +1,58 @@
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta http-equiv="refresh" content="3600" >
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>Team Info</title>
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+{% extends "base.html" %}
 
-    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js" integrity="sha384-SR1sx49pcuLnqZUnnPwx6FCym0wLsk5JZuNx2bPPENzswTNFaQU1RDvt3wT4gWFG" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.min.js" integrity="sha384-j0CNLUeiqtyaRmlzUHCPZ+Gy5fQu0dQ6eZ/xAww941Ai1SxSY+0EQqNXNE6DZiVc" crossorigin="anonymous"></script>
-    <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
-  </head>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="#">WWPKL</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav">
-        <li class="nav-item">
-          <a class="nav-link" href="/">Home</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/week_by_week">Week By Week</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link active" href="/team_info">Team Info</a>
-        </li>
-      </ul>
-    </div>
-  </nav>
-  <body>
-    <div class="container-fluid">
-      <h2>Team Info</h2>
-      <form method="POST" class="form-inline" role="form" id="lb_form">
-        <div class="row mb-3">
-          <div class="col-sm-4">
-                <select id='teams' name='teams' onchange="this.form.submit()" class="form-select form-select-sm mb-3">
-                {% for t in teams %}
-                <option value="{{t}}" {{'selected' if team==t}}>{{t}}</option>"
-                {% endfor %}
-            </select>
-          </div>
-          <div class="col-sm-4">
-                <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm">
-                  <option value="2025" {{'selected' if season=='2025'}}>2025</option>
-                  <option value="2024" {{'selected' if season=='2024'}}>2024</option>
-                  <option value="2023" {{'selected' if season=='2023'}}>2023</option>
-                  <option value="2022" {{'selected' if season=='2022'}}>2022</option>
-                  <option value="2021" {{'selected' if season=='2021'}}>2021</option>
-                  <option value="2020" {{'selected' if season=='2020'}}>2020</option>
-                  <option value="2019" {{'selected' if season=='2019'}}>2019</option>
-                  <option value="2018" {{'selected' if season=='2018'}}>2018</option>
-                  <option value="2017" {{'selected' if season=='2017'}}>2017</option>
-                  <option value="2016" {{'selected' if season=='2016'}}>2016</option>
-                </select>
-            </div>
+{% block title %}Team Info{% endblock %}
+
+{% block content %}
+  <div class="container-fluid">
+    <h2>Team Info</h2>
+    <form method="POST" class="form-inline" role="form" id="lb_form">
+      <div class="row mb-3">
+        <div class="col-sm-4">
+          <select id='teams' name='teams' onchange="this.form.submit()" class="form-select form-select-sm mb-3">
+            {% for t in teams %}
+            <option value="{{ t }}" {{ 'selected' if team == t }}>{{ t }}</option>
+            {% endfor %}
+          </select>
         </div>
-      </form>
-      <div style="padding-top: 20px;">
-          <canvas id="radar-chart" width="1000" height="500"></canvas>
+        <div class="col-sm-4">
+          <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm">
+            {% for year in available_years %}
+            <option value="{{ year }}" {{ 'selected' if season == year }}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
-      <div style="padding-top: 20px;">
-          <canvas id="horiz-bar-chart" width="1000" height="500"></canvas> 
-      </div>
+    </form>
+    <div style="padding-top: 20px;">
+      <canvas id="radar-chart" width="1000" height="500"></canvas>
     </div>
-  </body>
+    <div style="padding-top: 20px;">
+      <canvas id="horiz-bar-chart" width="1000" height="500"></canvas>
+    </div>
+  </div>
+{% endblock %}
 
+{% block scripts %}
   <script>
       $('#season').on('change', function(){
-          $('#teams').val() = '';
+          $('#teams').val('');
       });
 
       new Chart(document.getElementById("radar-chart"), {
           type: 'radar',
           data: {
-              labels: [{% for item in ranks_labels %}
-                         "{{item|safe}}",
-                       {% endfor %}
-              ],
+              labels: [{% for item in ranks_labels %}"{{ item|safe }}",{% endfor %}],
               datasets: [
                   {
                       label: "Values",
                       backgroundColor: 'rgba(255,0,0,0.1)',
-                      data: [{% for item in ranks %}
-                               {{item}},
-                             {% endfor %}
-                      ]
+                      data: [{% for item in ranks %}{{ item }},{% endfor %}]
                   },
               ]
           },
           options: {
               legend: { display: false },
-              title: {
-                  display: true,
-                  text: 'Radar Chart'
-              },
+              title: { display: true, text: 'Radar Chart' },
               scale: {
                   ticks: {
                       max: 12,
@@ -113,37 +66,25 @@
       new Chart(document.getElementById("horiz-bar-chart"), {
           type: 'horizontalBar',
           data: {
-              labels: [{% for item in stats_labels %}
-                         "{{item|safe}}",
-                       {% endfor %}
-              ],
+              labels: [{% for item in stats_labels %}"{{ item|safe }}",{% endfor %}],
               datasets: [
                   {
-                      label: "{{team|safe}}",
+                      label: "{{ team|safe }}",
                       backgroundColor: 'rgba(214, 233, 198, 0.8)',
-                      data: [{% for item in stats %}
-                               {{item}},
-                             {% endfor %}
-                      ]
+                      data: [{% for item in stats %}{{ item }},{% endfor %}]
                   },
                   {
                       label: "League Average",
                       backgroundColor: 'rgba(250, 235, 204, 0.8)',
-                      data: [{% for item in league_avg %}
-                               {{item}},
-                             {% endfor %}
-                      ]
+                      data: [{% for item in league_avg %}{{ item }},{% endfor %}]
                   },
               ]
           },
           options: {
               legend: { display: true },
-              title: {
-                  display: true,
-                  text: 'Team vs League Avg (Counting Stats)'
-              },
+              title: { display: true, text: 'Team vs League Avg (Counting Stats)' },
               maintainAspectRatio: false,
           }
       });
   </script>
-</html>
+{% endblock %}

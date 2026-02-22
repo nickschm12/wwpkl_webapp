@@ -4,6 +4,7 @@ import pandas as pd
 
 from packages.database.queries import *
 from packages.database import connections
+import packages.config as config
 
 app = Flask(__name__)
 
@@ -59,7 +60,7 @@ def index():
     # define the default values for the current year and week
     season = request.form.get('season')
     if season is None:
-        season = '2025'
+        season = config.CURRENT_YEAR
 
     category = request.form.get('cat')
     if category is None:
@@ -82,7 +83,9 @@ def index():
     season_roto = season_roto.sort_values(by=category, ascending=ascending)
 
     return render_template( 'index.html',
+                            active_tab='home',
                             season=season,
+                            available_years=get_available_years(session),
                             labels=labels,
                             sort=category,
                             categories=columns,
@@ -101,7 +104,7 @@ def index():
 def week_by_week():
     season = request.form.get('season')
     if season is None:
-        season = '2025'
+        season = config.CURRENT_YEAR
 
     week = request.form.get('week')
     if week is None:
@@ -113,8 +116,10 @@ def week_by_week():
     weekly_roto.columns = columns
 
     return render_template( 'week_by_week.html',
+                            active_tab='week_by_week',
                             season=season,
                             week=week,
+                            available_years=get_available_years(session),
                             tables=[
                                 weekly_roto.to_html(
                                     table_id='roto-table',
@@ -128,7 +133,7 @@ def week_by_week():
 def team_info():
     season = request.form.get('season')
     if not season:
-        season = '2025'
+        season = config.CURRENT_YEAR
 
     # define the options for the team dropdown
     teams = []
@@ -169,8 +174,10 @@ def team_info():
     stats = team_row[['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']]
 
     return render_template( 'team_info.html',
+                            active_tab='team_info',
                             team=team,
                             season=season,
+                            available_years=get_available_years(session),
                             teams=teams,
                             ranks_labels=ranks_labels,
                             ranks=ranks,

@@ -1,4 +1,5 @@
 import pandas as pd
+from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 from .models import League, Team, SeasonStats, WeekStats
@@ -38,6 +39,10 @@ def update_team_name(session,team,name):
 
 def get_teams(session,year):
     return session.query(Team).join(League, Team.league_id == League.league_id).filter(League.year == year).all()
+
+def get_available_years(session):
+    results = session.query(League.year).distinct().order_by(League.year.desc()).all()
+    return [r.year for r in results]
 
 
 def insert_season_stats(session,team_id,stats):
@@ -81,9 +86,9 @@ def update_season_stats(session,season_stats,stats):
     session.commit()
 
 def get_season_stats(engine, year):
-    query = str.format("select teams.name,season_stats.* from (season_stats join teams on season_stats.team_id = teams.id)" \
-            " join leagues on teams.league_id = leagues.league_id where leagues.year = '{0}'", year)
-    data_frame = pd.read_sql_query(query, con=engine)
+    query = text("select teams.name, season_stats.* from (season_stats join teams on season_stats.team_id = teams.id)"
+                 " join leagues on teams.league_id = leagues.league_id where leagues.year = :year")
+    data_frame = pd.read_sql_query(query, con=engine, params={'year': year})
     return data_frame
 
 def insert_weekly_stats(session,team_id,week,stats):
@@ -129,7 +134,7 @@ def update_weekly_stats(session, week_stats, stats):
     session.commit()
 
 def get_week_stats(engine, year, week):
-    query = str.format("select t.name, w.* from (week_stats as w join teams as t on w.team_id = t.id) join "
-                       "leagues as l on t.league_id = l.league_id where l.year = '{0}' and w.week = '{1}'", year, week)
-    data_frame = pd.read_sql_query(query, con=engine)
+    query = text("select t.name, w.* from (week_stats as w join teams as t on w.team_id = t.id) join "
+                 "leagues as l on t.league_id = l.league_id where l.year = :year and w.week = :week")
+    data_frame = pd.read_sql_query(query, con=engine, params={'year': year, 'week': week})
     return data_frame
