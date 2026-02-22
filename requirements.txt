@@ -36,7 +36,7 @@ packaging==24.2
 pandas==2.2.3
 pip-upgrader==1.4.15
 proto-plus==1.26.1
-protobuf==6.30.1
+protobuf==5.29.3
 psycopg2==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
