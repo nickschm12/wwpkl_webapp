@@ -54,11 +54,13 @@
               ]
           },
           options: {
-              legend: { display: true },
-              title: { display: false, text: 'Roto Season Standings' },
+              plugins: {
+                  legend: { display: true },
+                  title: { display: false, text: 'Roto Season Standings' },
+              },
               scales: {
-                  xAxes: [{ stacked: true }],
-                  yAxes: [{ stacked: true }]
+                  x: { stacked: true },
+                  y: { stacked: true }
               },
               maintainAspectRatio: false,
           }

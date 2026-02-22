@@ -51,10 +51,12 @@
               ]
           },
           options: {
-              legend: { display: false },
-              title: { display: true, text: 'Radar Chart' },
-              scale: {
-                  ticks: {
+              plugins: {
+                  legend: { display: false },
+                  title: { display: true, text: 'Radar Chart' },
+              },
+              scales: {
+                  r: {
                       max: 12,
                       beginAtZero: true
                   }
@@ -64,7 +66,7 @@
       });
 
       new Chart(document.getElementById("horiz-bar-chart"), {
-          type: 'horizontalBar',
+          type: 'bar',
           data: {
               labels: [{% for item in stats_labels %}"{{ item|safe }}",{% endfor %}],
               datasets: [
@@ -81,8 +83,11 @@
               ]
           },
           options: {
-              legend: { display: true },
-              title: { display: true, text: 'Team vs League Avg (Counting Stats)' },
+              indexAxis: 'y',
+              plugins: {
+                  legend: { display: true },
+                  title: { display: true, text: 'Team vs League Avg (Counting Stats)' },
+              },
               maintainAspectRatio: false,
           }
       });
