@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
 
+/* ── Theme variables ──────────────────────────────────── */
+:root {
+  --theme-primary:  #2d5a27;
+  --theme-hover:    #3d7a35;
+  --theme-sorted:   #4a9a40;
+  --theme-border:   #3d7a35;
+}
+
+[data-theme="north"] {
+  --theme-primary:  #1b3a6b;
+  --theme-hover:    #2a5496;
+  --theme-sorted:   #3a6ab8;
+  --theme-border:   #2a5496;
+}
+
 /* ── Base ─────────────────────────────────────────────── */
 body {
   font-family: 'Lato', Arial, Helvetica, sans-serif;
@@ -10,7 +25,7 @@ body {
 h2 {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #2d5a27;
+  color: var(--theme-primary);
   margin-top: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -37,19 +52,19 @@ form {
 
 /* Header cells */
 .table thead th {
-  background-color: #2d5a27;
+  background-color: var(--theme-primary);
   color: #ffffff;
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
   padding: 8px 10px;
-  border-color: #3d7a35;
+  border-color: var(--theme-border);
   cursor: pointer;
   user-select: none;
 }
 
 .table thead th:hover {
-  background-color: #3d7a35;
+  background-color: var(--theme-hover);
 }
 
 /* Active sort column */
@@ -65,7 +80,7 @@ form {
 
 .table thead th.sorted-desc,
 .table thead th.sorted-asc {
-  background-color: #4a9a40;
+  background-color: var(--theme-sorted);
 }
 
 /* Body cells */
@@ -91,7 +106,7 @@ form {
 
 .table thead th:first-child {
   z-index: 3;
-  background-color: #2d5a27;
+  background-color: var(--theme-primary);
 }
 
 /* Solid backgrounds so the sticky cell covers scrolling content */
