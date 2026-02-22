@@ -70,9 +70,10 @@ def index():
     if category in ['L','ERA','WHIP']:
         ascending = True
 
-    # get season stats and create roto standings
-    season_stats = get_season_stats(engine,season)
-    no_data = season_stats.empty
+    # get all regular season week stats (excluding playoffs)
+    all_week_stats = get_all_week_stats(engine, season)
+    regular_season_stats = all_week_stats[all_week_stats['week'] < config.PLAYOFF_WEEK_START]
+    no_data = regular_season_stats.empty
 
     labels = []
     batting_ranks = []
@@ -82,6 +83,24 @@ def index():
     team_week_ranks = {}
 
     if not no_data:
+        # Aggregate cumulative regular season stats from weekly data
+        season_stats = regular_season_stats.groupby('name').agg(
+            runs=('runs', 'sum'),
+            hits=('hits', 'sum'),
+            homeruns=('homeruns', 'sum'),
+            rbis=('rbis', 'sum'),
+            sb=('sb', 'sum'),
+            avg=('avg', 'mean'),
+            ops=('ops', 'mean'),
+            wins=('wins', 'sum'),
+            loses=('loses', 'sum'),
+            saves=('saves', 'sum'),
+            strikeouts=('strikeouts', 'sum'),
+            holds=('holds', 'sum'),
+            era=('era', 'mean'),
+            whip=('whip', 'mean'),
+        ).reset_index()
+
         season_roto = calculate_roto_standings(season_stats, False)
         season_roto.columns = columns
         labels = season_roto[season_roto.columns[0]]
@@ -95,32 +114,30 @@ def index():
         )
 
         # Compute cumulative week-by-week rank data for line chart
-        all_week_stats = get_all_week_stats(engine, season)
-        if not all_week_stats.empty:
-            week_numbers = sorted(all_week_stats['week'].unique().tolist())
-            team_names_ordered = labels.tolist()
-            team_week_ranks = {team: [] for team in team_names_ordered}
-            for week_num in week_numbers:
-                cumulative_df = all_week_stats[all_week_stats['week'] <= week_num].groupby('name').agg(
-                    runs=('runs', 'sum'),
-                    hits=('hits', 'sum'),
-                    homeruns=('homeruns', 'sum'),
-                    rbis=('rbis', 'sum'),
-                    sb=('sb', 'sum'),
-                    avg=('avg', 'mean'),
-                    ops=('ops', 'mean'),
-                    wins=('wins', 'sum'),
-                    loses=('loses', 'sum'),
-                    saves=('saves', 'sum'),
-                    strikeouts=('strikeouts', 'sum'),
-                    holds=('holds', 'sum'),
-                    era=('era', 'mean'),
-                    whip=('whip', 'mean'),
-                ).reset_index()
-                week_roto = calculate_roto_standings(cumulative_df, False)
-                rank_map = dict(zip(week_roto['name'], week_roto['Total Rank']))
-                for team in team_names_ordered:
-                    team_week_ranks[team].append(rank_map.get(team, None))
+        week_numbers = sorted(regular_season_stats['week'].unique().tolist())
+        team_names_ordered = labels.tolist()
+        team_week_ranks = {team: [] for team in team_names_ordered}
+        for week_num in week_numbers:
+            cumulative_df = regular_season_stats[regular_season_stats['week'] <= week_num].groupby('name').agg(
+                runs=('runs', 'sum'),
+                hits=('hits', 'sum'),
+                homeruns=('homeruns', 'sum'),
+                rbis=('rbis', 'sum'),
+                sb=('sb', 'sum'),
+                avg=('avg', 'mean'),
+                ops=('ops', 'mean'),
+                wins=('wins', 'sum'),
+                loses=('loses', 'sum'),
+                saves=('saves', 'sum'),
+                strikeouts=('strikeouts', 'sum'),
+                holds=('holds', 'sum'),
+                era=('era', 'mean'),
+                whip=('whip', 'mean'),
+            ).reset_index()
+            week_roto = calculate_roto_standings(cumulative_df, False)
+            rank_map = dict(zip(week_roto['name'], week_roto['Total Rank']))
+            for team in team_names_ordered:
+                team_week_ranks[team].append(rank_map.get(team, None))
 
     return render_template( 'index.html',
                             active_tab='home',

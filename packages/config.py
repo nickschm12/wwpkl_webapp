@@ -1,4 +1,5 @@
 CURRENT_YEAR = '2026'
+PLAYOFF_WEEK_START = 23
 
 # Yahoo gives a stat id and not a stat name so this dictionary maps the stat id to the stat name
 STAT_ID_TO_CAT = {
