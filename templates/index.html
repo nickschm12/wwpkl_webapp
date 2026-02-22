@@ -3,21 +3,15 @@
 {% block title %}WWPKL{% endblock %}
 
 {% block content %}
-  <div class="container">
+  <div class="container-fluid px-3">
     <h2>{{ season }} Roto Standings</h2>
     <form method="POST" class="form-inline" role="form" id="lb_form">
-      <div class="row mb-3">
-        <div class="col-sm-4">
-          <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm mb-3">
+      <input type="hidden" id="cat" name="cat" value="{{ sort }}">
+      <div class="row mb-2">
+        <div class="col-auto">
+          <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm">
             {% for year in available_years %}
             <option value="{{ year }}" {{ 'selected' if season == year }}>{{ year }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-sm-4">
-          <select id='cat' name='cat' onchange="this.form.submit()" class="form-select form-select-sm">
-            {% for category in categories %}
-            <option value="{{ category }}" {{ 'selected' if sort == category }}>{{ category }}</option>
             {% endfor %}
           </select>
         </div>
@@ -41,6 +35,43 @@
 {% block scripts %}
   {% if not no_data %}
   <script>
+      // Make table headers clickable for sorting
+      var currentSort = "{{ sort }}";
+      var ascCats = ["L", "ERA", "WHIP"];
+
+      document.querySelectorAll('#season-roto-table thead th').forEach(function(th) {
+          var colName = th.textContent.trim();
+
+          // Highlight the Total Rank column
+          if (colName === 'Total Rank') {
+              th.classList.add('total-rank');
+          }
+
+          // Mark the currently sorted column
+          if (colName === currentSort) {
+              th.classList.add(ascCats.includes(colName) ? 'sorted-asc' : 'sorted-desc');
+          }
+
+          // Click to sort
+          th.addEventListener('click', function() {
+              document.getElementById('cat').value = colName;
+              document.getElementById('lb_form').submit();
+          });
+      });
+
+      // Highlight Total Rank data cells
+      var table = document.getElementById('season-roto-table');
+      var headers = table.querySelectorAll('thead th');
+      var totalRankIndex = -1;
+      headers.forEach(function(th, i) {
+          if (th.textContent.trim() === 'Total Rank') totalRankIndex = i;
+      });
+      if (totalRankIndex >= 0) {
+          table.querySelectorAll('tbody tr').forEach(function(tr) {
+              tr.cells[totalRankIndex].classList.add('total-rank');
+          });
+      }
+
       new Chart(document.getElementById("bar-chart"), {
           type: 'bar',
           data: {

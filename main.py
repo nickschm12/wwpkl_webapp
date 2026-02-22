@@ -115,6 +115,11 @@ def week_by_week():
     if week is None:
         week = '1'
 
+    category = request.form.get('cat')
+    if category is None:
+        category = 'Total Rank'
+    ascending = category in ['L', 'ERA', 'WHIP']
+
     # get stats and create roto standings
     stats = get_week_stats(engine, season, week)
     no_data = stats.empty
@@ -123,6 +128,7 @@ def week_by_week():
     if not no_data:
         weekly_roto = calculate_roto_standings(stats, False)
         weekly_roto.columns = columns
+        weekly_roto = weekly_roto.sort_values(by=category, ascending=ascending)
         table_html = weekly_roto.to_html(
             table_id='roto-table',
             index=False,
@@ -133,6 +139,7 @@ def week_by_week():
                             active_tab='week_by_week',
                             season=season,
                             week=week,
+                            sort=category,
                             no_data=no_data,
                             available_years=get_available_years(session),
                             tables=[table_html]

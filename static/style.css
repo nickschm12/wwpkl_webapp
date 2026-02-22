@@ -1,5 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+
+/* ── Base ─────────────────────────────────────────────── */
 body {
+  font-family: 'Lato', Arial, Helvetica, sans-serif;
+  background-color: #f5f5f5;
   padding-bottom: 50px;
+}
+
+h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2d5a27;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 nav {
@@ -8,4 +21,106 @@ nav {
 
 form {
   margin-bottom: 10px;
+}
+
+/* ── Table ────────────────────────────────────────────── */
+.table-responsive {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+/* Header cells */
+.table thead th {
+  background-color: #2d5a27;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  padding: 8px 10px;
+  border-color: #3d7a35;
+  cursor: pointer;
+  user-select: none;
+}
+
+.table thead th:hover {
+  background-color: #3d7a35;
+}
+
+/* Active sort column */
+.table thead th.sorted-desc::after {
+  content: ' ▾';
+  font-size: 0.7rem;
+}
+
+.table thead th.sorted-asc::after {
+  content: ' ▴';
+  font-size: 0.7rem;
+}
+
+.table thead th.sorted-desc,
+.table thead th.sorted-asc {
+  background-color: #4a9a40;
+}
+
+/* Body cells */
+.table tbody td {
+  text-align: right;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+/* Team name column — left-aligned, bold */
+.table tbody td:first-child {
+  text-align: left;
+  font-weight: 700;
+}
+
+/* ── Sticky first column ──────────────────────────────── */
+.table thead th:first-child,
+.table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.table thead th:first-child {
+  z-index: 3;
+  background-color: #2d5a27;
+}
+
+/* Solid backgrounds so the sticky cell covers scrolling content */
+.table tbody tr td:first-child {
+  background-color: #ffffff;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td:first-child {
+  background-color: #f2f2f2;
+}
+
+/* ── Total Rank column highlight ──────────────────────── */
+.table td.total-rank,
+.table th.total-rank {
+  background-color: #fef9c3;
+  color: #713f12;
+}
+
+.table thead th.total-rank {
+  background-color: #d97706;
+  color: #ffffff;
+  border-color: #b45309;
+}
+
+.table thead th.total-rank:hover {
+  background-color: #b45309;
+}
+
+.table thead th.total-rank.sorted-desc,
+.table thead th.total-rank.sorted-asc {
+  background-color: #92400e;
 }

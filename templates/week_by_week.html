@@ -3,18 +3,19 @@
 {% block title %}Week By Week{% endblock %}
 
 {% block content %}
-  <div class="container">
-    <h2>Week By Week Roto Standings - Week {{ week }} of {{ season }}</h2>
+  <div class="container-fluid px-3">
+    <h2>Week By Week Roto Standings — Week {{ week }} of {{ season }}</h2>
     <form method="POST" class="form-inline" role="form" id="lb_form">
-      <div class="row mb-3">
-        <div class="col-sm-4">
-          <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm mb-3">
+      <input type="hidden" id="cat" name="cat" value="{{ sort }}">
+      <div class="row mb-2">
+        <div class="col-auto">
+          <select id='season' name='season' onchange="this.form.submit()" class="form-select form-select-sm">
             {% for year in available_years %}
             <option value="{{ year }}" {{ 'selected' if season == year }}>{{ year }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-sm-4">
+        <div class="col-auto">
           <select id='week' name='week' onchange="this.form.submit()" class="form-select form-select-sm">
             {% for w in range(1, 26) %}
             <option value="{{ w }}" {{ 'selected' if week == w|string }}>{{ w }}</option>
@@ -33,4 +34,43 @@
     </div>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if not no_data %}
+  <script>
+      var currentSort = "{{ sort }}";
+      var ascCats = ["L", "ERA", "WHIP"];
+
+      document.querySelectorAll('#roto-table thead th').forEach(function(th) {
+          var colName = th.textContent.trim();
+
+          if (colName === 'Total Rank') {
+              th.classList.add('total-rank');
+          }
+
+          if (colName === currentSort) {
+              th.classList.add(ascCats.includes(colName) ? 'sorted-asc' : 'sorted-desc');
+          }
+
+          th.addEventListener('click', function() {
+              document.getElementById('cat').value = colName;
+              document.getElementById('lb_form').submit();
+          });
+      });
+
+      // Highlight Total Rank data cells
+      var table = document.getElementById('roto-table');
+      var headers = table.querySelectorAll('thead th');
+      var totalRankIndex = -1;
+      headers.forEach(function(th, i) {
+          if (th.textContent.trim() === 'Total Rank') totalRankIndex = i;
+      });
+      if (totalRankIndex >= 0) {
+          table.querySelectorAll('tbody tr').forEach(function(tr) {
+              tr.cells[totalRankIndex].classList.add('total-rank');
+          });
+      }
+  </script>
+  {% endif %}
 {% endblock %}
