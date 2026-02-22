@@ -20,7 +20,7 @@ def unix_connection():
     host = "/cloudsql/{}".format(secrets['db_connection_name'])
 
     engine = sqlalchemy.create_engine(
-        sqlalchemy.engine.url.URL(
+        sqlalchemy.engine.url.URL.create(
             drivername='postgresql',
             username=secrets['db_user'],
             password=secrets['db_pw'],
@@ -39,7 +39,7 @@ def tcp_connection():
     secrets = get_secrets()
 
     engine = sqlalchemy.create_engine(
-        sqlalchemy.engine.url.URL(
+        sqlalchemy.engine.url.URL.create(
             drivername='postgresql',
             username=secrets['db_user'],
             password=secrets['db_pw'],
