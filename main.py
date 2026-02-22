@@ -78,6 +78,8 @@ def index():
     batting_ranks = []
     pitching_ranks = []
     table_html = ''
+    week_numbers = []
+    team_week_ranks = {}
 
     if not no_data:
         season_roto = calculate_roto_standings(season_stats, False)
@@ -92,6 +94,34 @@ def index():
             classes=['table-striped','table','table-bordered','compact','nowrap']
         )
 
+        # Compute cumulative week-by-week rank data for line chart
+        all_week_stats = get_all_week_stats(engine, season)
+        if not all_week_stats.empty:
+            week_numbers = sorted(all_week_stats['week'].unique().tolist())
+            team_names_ordered = labels.tolist()
+            team_week_ranks = {team: [] for team in team_names_ordered}
+            for week_num in week_numbers:
+                cumulative_df = all_week_stats[all_week_stats['week'] <= week_num].groupby('name').agg(
+                    runs=('runs', 'sum'),
+                    hits=('hits', 'sum'),
+                    homeruns=('homeruns', 'sum'),
+                    rbis=('rbis', 'sum'),
+                    sb=('sb', 'sum'),
+                    avg=('avg', 'mean'),
+                    ops=('ops', 'mean'),
+                    wins=('wins', 'sum'),
+                    loses=('loses', 'sum'),
+                    saves=('saves', 'sum'),
+                    strikeouts=('strikeouts', 'sum'),
+                    holds=('holds', 'sum'),
+                    era=('era', 'mean'),
+                    whip=('whip', 'mean'),
+                ).reset_index()
+                week_roto = calculate_roto_standings(cumulative_df, False)
+                rank_map = dict(zip(week_roto['name'], week_roto['Total Rank']))
+                for team in team_names_ordered:
+                    team_week_ranks[team].append(rank_map.get(team, None))
+
     return render_template( 'index.html',
                             active_tab='home',
                             season=season,
@@ -102,7 +132,9 @@ def index():
                             categories=columns,
                             batting_ranks=batting_ranks,
                             pitching_ranks=pitching_ranks,
-                            tables=[table_html]
+                            tables=[table_html],
+                            week_numbers=week_numbers,
+                            team_week_ranks=team_week_ranks
                            )
 
 @app.route('/week_by_week', methods=['GET','POST'])

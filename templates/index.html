@@ -25,6 +25,11 @@
         {{ tables[0]|safe }}
       </div>
     </div>
+    {% if week_numbers %}
+    <div class="row mb-3">
+      <canvas id="weekly-rank-chart" width="1000" height="500"></canvas>
+    </div>
+    {% endif %}
     <div class="row mb-3">
       <canvas id="bar-chart" width="1000" height="500"></canvas>
     </div>
@@ -71,6 +76,48 @@
               tr.cells[totalRankIndex].classList.add('total-rank');
           });
       }
+
+      {% if week_numbers %}
+      var palette = [
+          '#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f',
+          '#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac','#d37295','#6f9634'
+      ];
+
+      new Chart(document.getElementById("weekly-rank-chart"), {
+          type: 'line',
+          data: {
+              labels: {{ week_numbers | tojson }},
+              datasets: [
+                  {% for team_name, ranks in team_week_ranks.items() %}
+                  {
+                      label: {{ team_name | tojson }},
+                      data: {{ ranks | tojson }},
+                      borderColor: palette[{{ loop.index0 }} % palette.length],
+                      backgroundColor: palette[{{ loop.index0 }} % palette.length],
+                      fill: false,
+                      tension: 0.1,
+                      spanGaps: true,
+                  },
+                  {% endfor %}
+              ]
+          },
+          options: {
+              plugins: {
+                  legend: { display: true, position: 'bottom' },
+                  title: { display: true, text: 'Total Rank by Week' },
+              },
+              scales: {
+                  x: { title: { display: true, text: 'Week' } },
+                  y: {
+                      min: 0,
+                      max: 168,
+                      title: { display: true, text: 'Total Rank' }
+                  }
+              },
+              maintainAspectRatio: false,
+          }
+      });
+      {% endif %}
 
       new Chart(document.getElementById("bar-chart"), {
           type: 'bar',

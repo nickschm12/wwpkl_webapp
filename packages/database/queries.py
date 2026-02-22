@@ -138,3 +138,9 @@ def get_week_stats(engine, year, week):
                  "leagues as l on t.league_id = l.league_id where l.year = :year and w.week = :week")
     data_frame = pd.read_sql_query(query, con=engine, params={'year': year, 'week': week})
     return data_frame
+
+def get_all_week_stats(engine, year):
+    query = text("select t.name, w.* from (week_stats as w join teams as t on w.team_id = t.id) join "
+                 "leagues as l on t.league_id = l.league_id where l.year = :year order by w.week")
+    data_frame = pd.read_sql_query(query, con=engine, params={'year': year})
+    return data_frame
