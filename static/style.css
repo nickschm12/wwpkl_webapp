@@ -118,6 +118,24 @@ form {
   background-color: #f2f2f2;
 }
 
+/* ── Record Book ──────────────────────────────────────── */
+.table thead th.record-subheader {
+  background-color: var(--theme-sorted);
+  cursor: default;
+}
+
+.table thead th.record-subheader:hover {
+  background-color: var(--theme-sorted);
+}
+
+.record-book-table tbody td {
+  text-align: center;
+}
+
+.record-book-table tbody td:first-child {
+  text-align: left;
+}
+
 /* ── Total Rank column highlight ──────────────────────── */
 .table td.total-rank,
 .table th.total-rank {

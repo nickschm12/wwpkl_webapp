@@ -144,3 +144,22 @@ def get_all_week_stats(engine, year):
                  "leagues as l on t.league_id = l.league_id where l.year = :year order by w.week")
     data_frame = pd.read_sql_query(query, con=engine, params={'year': year})
     return data_frame
+
+def get_all_season_stats_all_years(engine):
+    query = text("""
+        select t.name, l.year, ss.*
+        from season_stats ss
+        join teams t on ss.team_id = t.id
+        join leagues l on t.league_id = l.league_id
+    """)
+    return pd.read_sql_query(query, con=engine)
+
+def get_all_week_stats_all_years(engine):
+    query = text("""
+        select t.name, l.year, w.*
+        from week_stats w
+        join teams t on w.team_id = t.id
+        join leagues l on t.league_id = l.league_id
+        order by l.year, w.week
+    """)
+    return pd.read_sql_query(query, con=engine)

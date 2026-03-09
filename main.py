@@ -259,5 +259,59 @@ def team_info():
 def rulebook():
     return render_template('rulebook.html', active_tab='rulebook')
 
+@app.route('/record_book')
+def record_book():
+    STATS = [
+        ('runs',        'Runs',         '{:,}',   False),
+        ('hits',        'Hits',         '{:,}',   False),
+        ('homeruns',    'Home Runs',    '{:,}',   False),
+        ('rbis',        'RBI',          '{:,}',   False),
+        ('sb',          'Stolen Bases', '{:,}',   False),
+        ('avg',         'AVG',          '{:.3f}', False),
+        ('ops',         'OPS',          '{:.3f}', False),
+        ('wins',        'Wins',         '{:,}',   False),
+        ('loses',       'Losses',       '{:,}',   True),
+        ('saves',       'Saves',        '{:,}',   False),
+        ('strikeouts',  'Strikeouts',   '{:,}',   False),
+        ('holds',       'Holds',        '{:,}',   False),
+        ('era',         'ERA',          '{:.2f}', True),
+        ('whip',        'WHIP',         '{:.2f}', True),
+    ]
+
+    def make_records(df, extra_cols):
+        records = []
+        for col, label, fmt, low_is_good in STATS:
+            if df[col].isna().all():
+                continue
+            best_row = df.loc[df[col].idxmin() if low_is_good else df[col].idxmax()]
+            worst_row = df.loc[df[col].idxmax() if low_is_good else df[col].idxmin()]
+            records.append({
+                'stat': label,
+                'best': {
+                    'value': fmt.format(best_row[col]),
+                    'team': best_row['name'],
+                    **{k: best_row[k] for k in extra_cols},
+                },
+                'worst': {
+                    'value': fmt.format(worst_row[col]),
+                    'team': worst_row['name'],
+                    **{k: worst_row[k] for k in extra_cols},
+                },
+            })
+        return records
+
+    season_df = get_all_season_stats_all_years(engine)
+    week_df = get_all_week_stats_all_years(engine)
+
+    season_df = season_df[season_df['year'] != '2020']
+
+    season_records = make_records(season_df, ['year']) if not season_df.empty else []
+    week_records = make_records(week_df, ['year', 'week']) if not week_df.empty else []
+
+    return render_template('record_book.html',
+                           active_tab='record_book',
+                           season_records=season_records,
+                           week_records=week_records)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

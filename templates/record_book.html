@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}WWPKL Record Book{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+  <h2 class="mb-4">Record Book</h2>
+
+  <!-- Season Records -->
+  <h4 class="mb-3">Season Records</h4>
+  <p class="text-muted small mb-3">Season stats begin with 2015. The 2020 season is omitted due to its shortened format.</p>
+  {% if season_records %}
+  <div class="table-responsive mb-5">
+    <table class="table table-sm table-hover align-middle record-book-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Stat</th>
+          <th colspan="3" class="text-center border-start">Best</th>
+          <th colspan="3" class="text-center border-start">Worst</th>
+        </tr>
+        <tr>
+          <th class="record-subheader border-start">Value</th>
+          <th class="record-subheader">Team</th>
+          <th class="record-subheader">Year</th>
+          <th class="record-subheader border-start">Value</th>
+          <th class="record-subheader">Team</th>
+          <th class="record-subheader">Year</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in season_records %}
+        <tr>
+          <td class="fw-bold">{{ rec.stat }}</td>
+          <td class="border-start">{{ rec.best.value }}</td>
+          <td>{{ rec.best.team }}</td>
+          <td>{{ rec.best.year }}</td>
+          <td class="border-start">{{ rec.worst.value }}</td>
+          <td>{{ rec.worst.team }}</td>
+          <td>{{ rec.worst.year }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info mb-5">No season data available.</div>
+  {% endif %}
+
+  <!-- Weekly Records -->
+  <h4 class="mb-3">Single-Week Records</h4>
+  <p class="text-muted small mb-3">Weekly stats begin with 2015.</p>
+  {% if week_records %}
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle record-book-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Stat</th>
+          <th colspan="4" class="text-center border-start">Best</th>
+          <th colspan="4" class="text-center border-start">Worst</th>
+        </tr>
+        <tr>
+          <th class="record-subheader border-start">Value</th>
+          <th class="record-subheader">Team</th>
+          <th class="record-subheader">Year</th>
+          <th class="record-subheader">Week</th>
+          <th class="record-subheader border-start">Value</th>
+          <th class="record-subheader">Team</th>
+          <th class="record-subheader">Year</th>
+          <th class="record-subheader">Week</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in week_records %}
+        <tr>
+          <td class="fw-bold">{{ rec.stat }}</td>
+          <td class="border-start">{{ rec.best.value }}</td>
+          <td>{{ rec.best.team }}</td>
+          <td>{{ rec.best.year }}</td>
+          <td>Wk {{ rec.best.week }}</td>
+          <td class="border-start">{{ rec.worst.value }}</td>
+          <td>{{ rec.worst.team }}</td>
+          <td>{{ rec.worst.year }}</td>
+          <td>Wk {{ rec.worst.week }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info">No weekly data available.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
