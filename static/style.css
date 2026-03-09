@@ -110,7 +110,7 @@ form {
 }
 
 /* Solid backgrounds so the sticky cell covers scrolling content */
-.table tbody tr td:first-child {
+.table > tbody > tr > td:first-child {
   background-color: #ffffff;
 }
 
@@ -118,10 +118,15 @@ form {
   background-color: #f2f2f2;
 }
 
+.table-hover > tbody > tr:hover > td:first-child {
+  background-color: #e2e2e2;
+}
+
 /* ── Record Book ──────────────────────────────────────── */
 .table thead th.record-subheader {
   background-color: var(--theme-sorted);
   cursor: default;
+  position: static;
 }
 
 .table thead th.record-subheader:hover {
