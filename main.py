@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import os
 import pandas as pd
 
+from sqlalchemy.orm import scoped_session
 from packages.database.queries import *
 from packages.database import connections
 from packages.yahoo.api import get_roster
@@ -15,8 +16,12 @@ if os.environ.get("DB_HOST"):
 else:
     engine = connections.unix_connection()
 
-DBSession = sessionmaker(bind=engine)
+DBSession = scoped_session(sessionmaker(bind=engine))
 session = DBSession()
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    DBSession.remove()
 
 # define the the table headers for all stat tables
 columns = ['Team','R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS','Batting Rank',
