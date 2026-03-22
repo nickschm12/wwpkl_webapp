@@ -1,87 +1,331 @@
 {% extends "base.html" %}
 
-{% block title %}WWPKL Pre-Season Projections{% endblock %}
+{% block title %}WWPKL 2026 Pre-Season Projections{% endblock %}
 
 {% block content %}
 <div class="container my-4">
   <div class="row justify-content-center">
     <div class="col-lg-11">
 
-      <h2 class="mb-1">Pre-Season Projections</h2>
-      <p class="text-muted mb-4">
-        Upload <strong>BatX</strong> (batting) and <strong>Steamer</strong> (pitching) projection CSVs
-        from FanGraphs to generate projected roto standings based on current rosters.
-      </p>
+      <h2 class="mb-1">2026 Pre-Season Projections</h2>
+      <p class="text-muted mb-1">Based on rosters as of 3/21/26.</p>
+      <p class="text-muted mb-1">Projections:</p>
+      <ul class="text-muted mb-1">
+        <li>Batting from BatX</li>
+        <li>Pitching from Steamer</li>
+      </ul>
+      <p class="text-muted mb-1">Lineup construction:</p>
+      <ul class="text-muted mb-1">
+        <li>Batting is best available at C / 1B / 2B / 3B / SS, top 3 OF, 2 UTIL (best remaining hitters) all by wRC+</li>
+        <li>Pitching is 5 SP by WAR, 5 RP by WAR (pure relievers first, then SP/RP dual, then excess SP)</li>
+      </ul>
+      <p class="text-muted small mb-4">Note: Shohei Ohtani is counted in both the batting and pitching lineups for Dangerous Nights Crew.</p>
 
-      {# ── Upload form ─────────────────────────────────────────────────────── #}
-      <div class="card mb-4">
-        <div class="card-header">
-          Upload Projections
-        </div>
-        <div class="card-body">
-          <form method="POST" enctype="multipart/form-data">
-            <div class="row g-3 align-items-end">
-              <div class="col-md-5">
-                <label for="batting_csv" class="form-label">
-                  Batting — FanGraphs BatX CSV
-                </label>
-                <input class="form-control form-control-sm" type="file"
-                       id="batting_csv" name="batting_csv" accept=".csv" required>
-              </div>
-              <div class="col-md-5">
-                <label for="pitching_csv" class="form-label">
-                  Pitching — FanGraphs Steamer CSV
-                </label>
-                <input class="form-control form-control-sm" type="file"
-                       id="pitching_csv" name="pitching_csv" accept=".csv" required>
-              </div>
-              <div class="col-md-2">
-                <button type="submit" class="btn btn-primary btn-sm w-100">
-                  Run Projections
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {# ── Error ───────────────────────────────────────────────────────────── #}
-      {% if error %}
-      <div class="alert alert-danger">{{ error }}</div>
-      {% endif %}
-
-      {# ── Results ─────────────────────────────────────────────────────────── #}
-      {% if table_html %}
-
+      {# ── Standings table ─────────────────────────────────────────────────── #}
       <h4 class="mb-2">Projected Roto Standings</h4>
-      <p class="text-muted small mb-3">
-        Lineup construction: best available at C / 1B / 2B / 3B / SS by wRC+,
-        top 3 OF by wRC+, 2 UTIL (best remaining hitters), 5 SP by FIP, 5 RP by ERA.
-        Rate stats (AVG, OPS, ERA, WHIP) aggregated from lineup totals.
-      </p>
-
       <div class="table-responsive mb-5">
-        {{ table_html | safe }}
+        <table id="proj-standings" class="table table-striped table-bordered table-sm compact nowrap" style="cursor:default;">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>R</th><th>H</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th><th>OPS</th>
+              <th>Batting Rank</th>
+              <th>W</th><th>L</th><th>SV</th><th>SO</th><th>HLD</th><th>ERA</th><th>WHIP</th>
+              <th>Pitching Rank</th>
+              <th>Total Rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>The Bigots</td><td>802</td><td>1384</td><td>251</td><td>803</td><td>113</td><td>.264</td><td>.811</td><td>80.0</td><td>69</td><td>58</td><td>50</td><td>1214</td><td>50</td><td>3.70</td><td>1.23</td><td>42.5</td><td>122.5</td></tr>
+            <tr><td>Dangerous Nights Crew</td><td>788</td><td>1326</td><td>252</td><td>783</td><td>110</td><td>.253</td><td>.783</td><td>61.0</td><td>74</td><td>59</td><td>69</td><td>1230</td><td>47</td><td>3.44</td><td>1.18</td><td>61.0</td><td>122.0</td></tr>
+            <tr><td>Omar Manaea</td><td>760</td><td>1346</td><td>235</td><td>761</td><td>104</td><td>.266</td><td>.804</td><td>61.0</td><td>73</td><td>64</td><td>70</td><td>1343</td><td>46</td><td>3.58</td><td>1.17</td><td>59.5</td><td>120.5</td></tr>
+            <tr><td>Alan's Liang</td><td>717</td><td>1251</td><td>239</td><td>739</td><td>79</td><td>.259</td><td>.797</td><td>41.5</td><td>76</td><td>63</td><td>60</td><td>1344</td><td>50</td><td>3.47</td><td>1.18</td><td>65.5</td><td>107.0</td></tr>
+            <tr><td>Hailey's Dad's Team</td><td>780</td><td>1342</td><td>249</td><td>773</td><td>128</td><td>.263</td><td>.805</td><td>71.0</td><td>74</td><td>67</td><td>56</td><td>1224</td><td>40</td><td>3.76</td><td>1.27</td><td>27.5</td><td>98.5</td></tr>
+            <tr><td>Shmohawks</td><td>778</td><td>1336</td><td>246</td><td>792</td><td>95</td><td>.248</td><td>.767</td><td>47.5</td><td>76</td><td>67</td><td>12</td><td>1274</td><td>57</td><td>3.80</td><td>1.24</td><td>41.0</td><td>88.5</td></tr>
+            <tr><td>Boogie Down Boyz</td><td>718</td><td>1240</td><td>222</td><td>731</td><td>107</td><td>.251</td><td>.773</td><td>31.5</td><td>70</td><td>61</td><td>87</td><td>1302</td><td>41</td><td>3.65</td><td>1.21</td><td>52.5</td><td>84.0</td></tr>
+            <tr><td>Hello</td><td>775</td><td>1289</td><td>224</td><td>716</td><td>143</td><td>.259</td><td>.792</td><td>49.5</td><td>66</td><td>60</td><td>46</td><td>1172</td><td>54</td><td>3.79</td><td>1.24</td><td>32.5</td><td>82.0</td></tr>
+            <tr><td>Miller Lite's</td><td>740</td><td>1334</td><td>194</td><td>713</td><td>106</td><td>.256</td><td>.758</td><td>33.0</td><td>67</td><td>59</td><td>80</td><td>1229</td><td>46</td><td>3.67</td><td>1.20</td><td>49.0</td><td>82.0</td></tr>
+            <tr><td>Paddy's Pub</td><td>676</td><td>1173</td><td>228</td><td>686</td><td>95</td><td>.249</td><td>.766</td><td>18.5</td><td>72</td><td>65</td><td>87</td><td>1233</td><td>47</td><td>3.70</td><td>1.23</td><td>48.0</td><td>66.5</td></tr>
+            <tr><td>CPLL All-Stars</td><td>724</td><td>1309</td><td>219</td><td>731</td><td>67</td><td>.252</td><td>.756</td><td>24.5</td><td>78</td><td>70</td><td>64</td><td>1318</td><td>20</td><td>3.80</td><td>1.25</td><td>35.5</td><td>60.0</td></tr>
+            <tr><td>Ms. Dean's Lean</td><td>708</td><td>1271</td><td>223</td><td>718</td><td>70</td><td>.255</td><td>.768</td><td>27.0</td><td>74</td><td>71</td><td>69</td><td>1318</td><td>31</td><td>3.94</td><td>1.25</td><td>31.5</td><td>58.5</td></tr>
+          </tbody>
+        </table>
       </div>
-
-      {# ── Unmatched players warning ────────────────────────────────────────── #}
-      {% if unmatched_map %}
-      <div class="alert alert-warning mb-4">
-        <strong>Some rostered players were not found in the projection files:</strong>
-        <ul class="mb-0 mt-1">
-          {% for team, players in unmatched_map.items() %}
-          <li><strong>{{ team }}:</strong> {{ players | join(', ') }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
 
       {# ── Lineup breakdown ────────────────────────────────────────────────── #}
       <h4 class="mb-2">Projected Lineups</h4>
-      <p class="text-muted small mb-3">Teams ordered by projected Total Rank (best first).</p>
+      <p class="text-muted small mb-3">Teams ordered by projected Total Rank. Click to expand.</p>
 
       <div class="accordion mb-5" id="lineupAccordion">
-        {% for team in team_lineups %}
+
+        {% set teams = [
+          {'rank': 1,  'name': "The Bigots",            'total': 122.5, 'lineup': [
+            ('C',   'Ivan Herrera',                  '68 R · 126 H · 18 HR · 64 RBI · 7 SB · .266 AVG · .777 OPS',  'hitter'),
+            ('1B',   'Rafael Devers',                 '85 R · 140 H · 32 HR · 93 RBI · 2 SB · .251 AVG · .824 OPS',  'hitter'),
+            ('2B',   'Nico Hoerner',                  '73 R · 154 H · 6 HR · 54 RBI · 26 SB · .276 AVG · .694 OPS',  'hitter'),
+            ('3B',   'Junior Caminero',               '82 R · 157 H · 36 HR · 105 RBI · 5 SB · .268 AVG · .821 OPS',  'hitter'),
+            ('SS',   'Gunnar Henderson',              '94 R · 156 H · 25 HR · 80 RBI · 20 SB · .268 AVG · .808 OPS',  'hitter'),
+            ('OF1',   'Aaron Judge',                   '106 R · 149 H · 50 HR · 120 RBI · 8 SB · .287 AVG · 1.039 OPS',  'hitter'),
+            ('OF2',   'Corbin Carroll',                '96 R · 136 H · 25 HR · 77 RBI · 34 SB · .260 AVG · .834 OPS',  'hitter'),
+            ('OF3',   'Roman Anthony',                 '80 R · 141 H · 19 HR · 73 RBI · 10 SB · .265 AVG · .797 OPS',  'hitter'),
+            ('UTIL1',   'Andrew Vaughn',                 '59 R · 125 H · 22 HR · 79 RBI · 1 SB · .256 AVG · .755 OPS',  'hitter'),
+            ('UTIL2',   'Isaac Paredes',                 '58 R · 100 H · 18 HR · 58 RBI · 1 SB · .233 AVG · .736 OPS',  'hitter'),
+            ('SP1',   'Yoshinobu Yamamoto',            '11 W · 7 L · 0 SV · 163 K · 0 HLD · 3.45 ERA · 1.21 WHIP',  'sp'),
+            ('SP2',   'Freddy Peralta',                '11 W · 9 L · 0 SV · 185 K · 0 HLD · 3.80 ERA · 1.23 WHIP',  'sp'),
+            ('SP3',   'Nick Pivetta',                  '10 W · 10 L · 0 SV · 192 K · 0 HLD · 3.97 ERA · 1.20 WHIP',  'sp'),
+            ('SP4',   'Cody Ponce',                    '10 W · 9 L · 0 SV · 158 K · 1 HLD · 3.88 ERA · 1.24 WHIP',  'sp'),
+            ('SP5',   'Emmet Sheehan',                 '10 W · 8 L · 0 SV · 171 K · 1 HLD · 3.94 ERA · 1.22 WHIP',  'sp'),
+            ('RP1',   'Abner Uribe',                   '4 W · 3 L · 19 SV · 87 K · 7 HLD · 3.16 ERA · 1.25 WHIP',  'rp'),
+            ('RP2',   'Pete Fairbanks',                '3 W · 3 L · 27 SV · 66 K · 4 HLD · 3.57 ERA · 1.23 WHIP',  'rp'),
+            ('RP3',   'Adrian Morejon',                '4 W · 3 L · 3 SV · 70 K · 13 HLD · 3.36 ERA · 1.22 WHIP',  'rp'),
+            ('RP4',   'Jason Adam',                    '3 W · 3 L · 1 SV · 66 K · 15 HLD · 3.65 ERA · 1.22 WHIP',  'rp'),
+            ('RP5',   'Brendon Little',                '3 W · 2 L · 0 SV · 57 K · 10 HLD · 3.37 ERA · 1.38 WHIP',  'rp'),
+          ]},
+          {'rank': 2,  'name': "Dangerous Nights Crew",  'total': 122.0, 'lineup': [
+            ('C',   'Ben Rice',                      '73 R · 118 H · 26 HR · 71 RBI · 5 SB · .249 AVG · .805 OPS',  'hitter'),
+            ('1B',   'Munetaka Murakami',             '77 R · 94 H · 31 HR · 78 RBI · 12 SB · .206 AVG · .779 OPS',  'hitter'),
+            ('2B',   'Jose Altuve',                   '74 R · 137 H · 20 HR · 69 RBI · 11 SB · .254 AVG · .736 OPS',  'hitter'),
+            ('3B',   'Alec Bohm',                     '62 R · 140 H · 14 HR · 67 RBI · 3 SB · .272 AVG · .728 OPS',  'hitter'),
+            ('SS',   'Otto Lopez',                    '67 R · 141 H · 12 HR · 60 RBI · 17 SB · .274 AVG · .729 OPS',  'hitter'),
+            ('OF1',   'Taylor Ward',                   '81 R · 136 H · 27 HR · 82 RBI · 5 SB · .246 AVG · .778 OPS',  'hitter'),
+            ('OF2',   'Randy Arozarena',               '88 R · 131 H · 24 HR · 74 RBI · 24 SB · .232 AVG · .741 OPS',  'hitter'),
+            ('OF3',   'Brandon Nimmo',                 '79 R · 136 H · 21 HR · 71 RBI · 8 SB · .251 AVG · .761 OPS',  'hitter'),
+            ('UTIL1',   'Salvador Perez',                '65 R · 131 H · 28 HR · 92 RBI · 0 SB · .251 AVG · .762 OPS',  'hitter'),
+            ('UTIL2',   'Shohei Ohtani',                 '121 R · 159 H · 48 HR · 119 RBI · 25 SB · .285 AVG · .994 OPS',  'hitter'),
+            ('SP1',   'Cristopher Sánchez',            '14 W · 9 L · 0 SV · 191 K · 0 HLD · 3.15 ERA · 1.18 WHIP',  'sp'),
+            ('SP2',   'Logan Webb',                    '13 W · 10 L · 0 SV · 187 K · 0 HLD · 3.31 ERA · 1.21 WHIP',  'sp'),
+            ('SP3',   'Logan Gilbert',                 '11 W · 9 L · 0 SV · 182 K · 0 HLD · 3.40 ERA · 1.10 WHIP',  'sp'),
+            ('SP4',   'Shohei Ohtani',                 '9 W · 6 L · 0 SV · 136 K · 0 HLD · 3.46 ERA · 1.15 WHIP',  'sp'),
+            ('SP5',   'Matthew Boyd',                  '11 W · 10 L · 0 SV · 156 K · 0 HLD · 3.94 ERA · 1.25 WHIP',  'sp'),
+            ('RP1',   'Bryan Abreu',                   '4 W · 3 L · 5 SV · 88 K · 13 HLD · 3.24 ERA · 1.17 WHIP',  'rp'),
+            ('RP2',   'Garrett Cleavinger',            '3 W · 3 L · 8 SV · 84 K · 13 HLD · 3.22 ERA · 1.17 WHIP',  'rp'),
+            ('RP3',   'Robert Suarez',                 '4 W · 3 L · 8 SV · 73 K · 11 HLD · 3.51 ERA · 1.20 WHIP',  'rp'),
+            ('RP4',   'Ryan Walker',                   '3 W · 3 L · 24 SV · 68 K · 6 HLD · 3.29 ERA · 1.19 WHIP',  'rp'),
+            ('RP5',   'Kenley Jansen',                 '3 W · 3 L · 23 SV · 63 K · 4 HLD · 4.06 ERA · 1.24 WHIP',  'rp'),
+          ]},
+          {'rank': 3,  'name': "Omar Manaea",            'total': 120.5, 'lineup': [
+            ('C',   'Will Smith',                    '73 R · 115 H · 24 HR · 73 RBI · 3 SB · .271 AVG · .862 OPS',  'hitter'),
+            ('1B',   'Yandy Díaz',                    '77 R · 157 H · 23 HR · 85 RBI · 2 SB · .286 AVG · .814 OPS',  'hitter'),
+            ('2B',   'Brendan Donovan',               '65 R · 132 H · 14 HR · 63 RBI · 5 SB · .264 AVG · .742 OPS',  'hitter'),
+            ('3B',   'José Ramírez',                  '91 R · 156 H · 26 HR · 84 RBI · 34 SB · .270 AVG · .818 OPS',  'hitter'),
+            ('SS',   'Corey Seager',                  '71 R · 126 H · 28 HR · 84 RBI · 2 SB · .276 AVG · .876 OPS',  'hitter'),
+            ('OF1',   'Julio Rodríguez',               '96 R · 163 H · 28 HR · 87 RBI · 26 SB · .273 AVG · .812 OPS',  'hitter'),
+            ('OF2',   'Wyatt Langford',                '87 R · 133 H · 25 HR · 74 RBI · 20 SB · .250 AVG · .795 OPS',  'hitter'),
+            ('OF3',   'Tyler Soderstrom',              '75 R · 134 H · 23 HR · 74 RBI · 6 SB · .256 AVG · .776 OPS',  'hitter'),
+            ('UTIL1',   'Kazuma Okamoto',                '66 R · 109 H · 25 HR · 74 RBI · 1 SB · .236 AVG · .771 OPS',  'hitter'),
+            ('UTIL2',   'Sal Stewart',                   '59 R · 119 H · 18 HR · 63 RBI · 6 SB · .271 AVG · .782 OPS',  'hitter'),
+            ('SP1',   'Jacob deGrom',                  '11 W · 9 L · 0 SV · 203 K · 0 HLD · 3.52 ERA · 1.10 WHIP',  'sp'),
+            ('SP2',   'Hunter Brown',                  '12 W · 10 L · 0 SV · 200 K · 0 HLD · 3.63 ERA · 1.23 WHIP',  'sp'),
+            ('SP3',   'Bryan Woo',                     '12 W · 10 L · 0 SV · 196 K · 0 HLD · 3.59 ERA · 1.13 WHIP',  'sp'),
+            ('SP4',   'Eury Pérez',                    '9 W · 10 L · 0 SV · 171 K · 0 HLD · 4.00 ERA · 1.22 WHIP',  'sp'),
+            ('SP5',   'Shota Imanaga',                 '9 W · 9 L · 0 SV · 138 K · 0 HLD · 4.11 ERA · 1.20 WHIP',  'sp'),
+            ('RP1',   'Mason Miller',                  '4 W · 2 L · 32 SV · 105 K · 2 HLD · 2.39 ERA · 1.00 WHIP',  'rp'),
+            ('RP2',   'Grant Taylor',                  '5 W · 5 L · 5 SV · 108 K · 15 HLD · 3.36 ERA · 1.23 WHIP',  'rp'),
+            ('RP3',   'Cade Smith',                    '4 W · 3 L · 30 SV · 88 K · 3 HLD · 2.99 ERA · 1.10 WHIP',  'rp'),
+            ('RP4',   'Gabe Speier',                   '3 W · 3 L · 0 SV · 66 K · 12 HLD · 3.21 ERA · 1.14 WHIP',  'rp'),
+            ('RP5',   'Phil Maton',                    '3 W · 3 L · 4 SV · 67 K · 14 HLD · 3.82 ERA · 1.28 WHIP',  'rp'),
+          ]},
+          {'rank': 4,  'name': "Alan's Liang",          'total': 107.0, 'lineup': [
+            ('C',   'Hunter Goodman',                '69 R · 130 H · 28 HR · 87 RBI · 2 SB · .255 AVG · .789 OPS',  'hitter'),
+            ('1B',   'Pete Alonso',                   '87 R · 144 H · 37 HR · 99 RBI · 3 SB · .251 AVG · .825 OPS',  'hitter'),
+            ('2B',   'Jordan Westburg',               '53 R · 95 H · 16 HR · 50 RBI · 5 SB · .260 AVG · .772 OPS',  'hitter'),
+            ('3B',   'Manny Machado',                 '79 R · 148 H · 28 HR · 86 RBI · 8 SB · .261 AVG · .779 OPS',  'hitter'),
+            ('SS',   'Francisco Lindor',              '85 R · 140 H · 25 HR · 77 RBI · 22 SB · .256 AVG · .780 OPS',  'hitter'),
+            ('OF1',   'Kyle Tucker',                   '96 R · 142 H · 29 HR · 86 RBI · 17 SB · .269 AVG · .862 OPS',  'hitter'),
+            ('OF2',   'Brent Rooker',                  '90 R · 151 H · 34 HR · 95 RBI · 7 SB · .266 AVG · .850 OPS',  'hitter'),
+            ('OF3',   "Ryan O'Hearn",                  '59 R · 119 H · 13 HR · 58 RBI · 4 SB · 0.262 AVG · 0.743 OPS',  'hitter'),
+            ('UTIL1',   'Jonathan Aranda',               '67 R · 129 H · 21 HR · 77 RBI · 1 SB · .258 AVG · .778 OPS',  'hitter'),
+            ('UTIL2',   'Jasson Domínguez',              '31 R · 51 H · 8 HR · 25 RBI · 10 SB · .239 AVG · .717 OPS',  'hitter'),
+            ('SP1',   'Paul Skenes',                   '14 W · 9 L · 0 SV · 237 K · 0 HLD · 2.92 ERA · 1.08 WHIP',  'sp'),
+            ('SP2',   'Jesús Luzardo',                 '12 W · 10 L · 0 SV · 198 K · 0 HLD · 3.57 ERA · 1.19 WHIP',  'sp'),
+            ('SP3',   'George Kirby',                  '12 W · 10 L · 0 SV · 174 K · 0 HLD · 3.51 ERA · 1.12 WHIP',  'sp'),
+            ('SP4',   'Spencer Strider',               '10 W · 9 L · 0 SV · 187 K · 0 HLD · 3.82 ERA · 1.23 WHIP',  'sp'),
+            ('SP5',   'Sandy Alcantara',               '10 W · 12 L · 0 SV · 158 K · 0 HLD · 4.16 ERA · 1.32 WHIP',  'sp'),
+            ('RP1',   'Jhoan Duran',                   '4 W · 3 L · 29 SV · 83 K · 3 HLD · 2.78 ERA · 1.13 WHIP',  'rp'),
+            ('RP2',   'Griffin Jax',                   '4 W · 3 L · 12 SV · 86 K · 10 HLD · 2.94 ERA · 1.10 WHIP',  'rp'),
+            ('RP3',   'Tanner Scott',                  '4 W · 3 L · 4 SV · 73 K · 15 HLD · 3.44 ERA · 1.25 WHIP',  'rp'),
+            ('RP4',   'Matt Brash',                    '3 W · 3 L · 3 SV · 75 K · 12 HLD · 3.05 ERA · 1.19 WHIP',  'rp'),
+            ('RP5',   'Edwin Uceta',                   '3 W · 3 L · 12 SV · 72 K · 10 HLD · 3.63 ERA · 1.19 WHIP',  'rp'),
+          ]},
+          {'rank': 5,  'name': "Hailey's Dad's Team",   'total': 98.5,  'lineup': [
+            ('C',   'Agustín Ramírez',               '59 R · 116 H · 18 HR · 65 RBI · 9 SB · .247 AVG · .721 OPS',  'hitter'),
+            ('1B',   'Vladimir Guerrero Jr.',         '98 R · 173 H · 32 HR · 98 RBI · 6 SB · .299 AVG · .901 OPS',  'hitter'),
+            ('2B',   'Jorge Polanco',                 '61 R · 109 H · 20 HR · 63 RBI · 6 SB · .242 AVG · .739 OPS',  'hitter'),
+            ('3B',   'Addison Barger',                '56 R · 101 H · 17 HR · 58 RBI · 4 SB · .237 AVG · .718 OPS',  'hitter'),
+            ('SS',   'Bobby Witt Jr.',                '104 R · 175 H · 31 HR · 96 RBI · 37 SB · .292 AVG · .873 OPS',  'hitter'),
+            ('OF1',   'Yordan Alvarez',                '83 R · 137 H · 33 HR · 91 RBI · 3 SB · .292 AVG · .952 OPS',  'hitter'),
+            ('OF2',   'Fernando Tatis Jr.',            '99 R · 154 H · 29 HR · 85 RBI · 23 SB · .273 AVG · .848 OPS',  'hitter'),
+            ('OF3',   'Ramón Laureano',                '67 R · 114 H · 20 HR · 63 RBI · 9 SB · .244 AVG · .738 OPS',  'hitter'),
+            ('UTIL1',   'Zach Neto',                     '85 R · 141 H · 26 HR · 75 RBI · 27 SB · .249 AVG · .764 OPS',  'hitter'),
+            ('UTIL2',   'Kyle Stowers',                  '68 R · 121 H · 24 HR · 78 RBI · 4 SB · .236 AVG · .749 OPS',  'hitter'),
+            ('SP1',   'Framber Valdez',                '12 W · 10 L · 0 SV · 176 K · 0 HLD · 3.43 ERA · 1.27 WHIP',  'sp'),
+            ('SP2',   'Ranger Suárez',                 '11 W · 10 L · 0 SV · 153 K · 0 HLD · 3.74 ERA · 1.28 WHIP',  'sp'),
+            ('SP3',   'Michael King',                  '10 W · 10 L · 0 SV · 173 K · 0 HLD · 3.80 ERA · 1.25 WHIP',  'sp'),
+            ('SP4',   'Tyler Glasnow',                 '10 W · 7 L · 0 SV · 162 K · 0 HLD · 3.61 ERA · 1.22 WHIP',  'sp'),
+            ('SP5',   'Chase Burns',                   '7 W · 7 L · 0 SV · 130 K · 1 HLD · 3.70 ERA · 1.19 WHIP',  'sp'),
+            ('RP1',   'Lucas Erceg',                   '3 W · 3 L · 2 SV · 63 K · 13 HLD · 3.65 ERA · 1.29 WHIP',  'rp'),
+            ('RP2',   'Raisel Iglesias',               '3 W · 3 L · 26 SV · 71 K · 4 HLD · 3.71 ERA · 1.20 WHIP',  'rp'),
+            ('RP3',   'Dennis Santana',                '3 W · 3 L · 26 SV · 64 K · 5 HLD · 4.03 ERA · 1.32 WHIP',  'rp'),
+            ('RP4',   'Tyler Rogers',                  '4 W · 4 L · 2 SV · 51 K · 18 HLD · 3.99 ERA · 1.31 WHIP',  'rp'),
+            ('RP5',   'Gavin Williams',                '10 W · 11 L · 0 SV · 181 K · 0 HLD · 4.09 ERA · 1.35 WHIP',  'rp'),
+          ]},
+          {'rank': 6,  'name': "Shmohawks",              'total': 88.5,  'lineup': [
+            ('C',   'Drake Baldwin',                 '60 R · 122 H · 16 HR · 63 RBI · 0 SB · .255 AVG · .725 OPS',  'hitter'),
+            ('1B',   'Matt Olson',                    '81 R · 136 H · 27 HR · 86 RBI · 1 SB · .238 AVG · .760 OPS',  'hitter'),
+            ('2B',   'Bryson Stott',                  '70 R · 129 H · 13 HR · 57 RBI · 22 SB · .255 AVG · .713 OPS',  'hitter'),
+            ('3B',   'Eugenio Suárez',                '73 R · 123 H · 34 HR · 92 RBI · 2 SB · .231 AVG · .773 OPS',  'hitter'),
+            ('SS',   'Jeremy Peña',                   '76 R · 147 H · 16 HR · 65 RBI · 17 SB · .272 AVG · .748 OPS',  'hitter'),
+            ('OF1',   'Kyle Schwarber',                '94 R · 127 H · 41 HR · 107 RBI · 6 SB · .231 AVG · .848 OPS',  'hitter'),
+            ('OF2',   'Seiya Suzuki',                  '82 R · 133 H · 27 HR · 83 RBI · 10 SB · .255 AVG · .804 OPS',  'hitter'),
+            ('OF3',   'James Wood',                    '82 R · 142 H · 23 HR · 79 RBI · 17 SB · .258 AVG · .788 OPS',  'hitter'),
+            ('UTIL1',   'Riley Greene',                  '80 R · 139 H · 27 HR · 83 RBI · 4 SB · .248 AVG · .770 OPS',  'hitter'),
+            ('UTIL2',   'Dansby Swanson',                '79 R · 139 H · 22 HR · 77 RBI · 15 SB · .246 AVG · .727 OPS',  'hitter'),
+            ('SP1',   'Chris Sale',                    '12 W · 8 L · 0 SV · 206 K · 0 HLD · 3.19 ERA · 1.09 WHIP',  'sp'),
+            ('SP2',   'Aaron Nola',                    '11 W · 10 L · 0 SV · 175 K · 0 HLD · 3.98 ERA · 1.22 WHIP',  'sp'),
+            ('SP3',   'Kyle Bradish',                  '10 W · 8 L · 0 SV · 153 K · 0 HLD · 3.71 ERA · 1.24 WHIP',  'sp'),
+            ('SP4',   'Nick Lodolo',                   '9 W · 10 L · 0 SV · 161 K · 0 HLD · 4.03 ERA · 1.22 WHIP',  'sp'),
+            ('SP5',   'Carlos Rodón',                  '10 W · 9 L · 0 SV · 175 K · 0 HLD · 3.96 ERA · 1.25 WHIP',  'sp'),
+            ('RP1',   'Will Vest',                     '4 W · 3 L · 5 SV · 70 K · 12 HLD · 3.25 ERA · 1.21 WHIP',  'rp'),
+            ('RP2',   'Matt Strahm',                   '3 W · 3 L · 1 SV · 72 K · 17 HLD · 3.76 ERA · 1.19 WHIP',  'rp'),
+            ('RP3',   'Brad Keller',                   '3 W · 3 L · 2 SV · 60 K · 16 HLD · 3.97 ERA · 1.35 WHIP',  'rp'),
+            ('RP4',   'Tony Santillan',                '3 W · 4 L · 4 SV · 74 K · 13 HLD · 4.29 ERA · 1.36 WHIP',  'rp'),
+            ('RP5',   'Clay Holmes',                   '10 W · 9 L · 0 SV · 129 K · 0 HLD · 3.88 ERA · 1.38 WHIP',  'rp'),
+          ]},
+          {'rank': 7,  'name': "Boogie Down Boyz",       'total': 84.0,  'lineup': [
+            ('C',   'Cal Raleigh',                   '82 R · 121 H · 39 HR · 103 RBI · 7 SB · .224 AVG · .809 OPS',  'hitter'),
+            ('1B',   'Bryce Harper',                  '84 R · 143 H · 26 HR · 86 RBI · 10 SB · .273 AVG · .851 OPS',  'hitter'),
+            ('2B',   'Ketel Marte',                   '86 R · 148 H · 29 HR · 95 RBI · 5 SB · .276 AVG · .866 OPS',  'hitter'),
+            ('3B',   'Alex Bregman',                  '76 R · 142 H · 23 HR · 81 RBI · 2 SB · .252 AVG · .758 OPS',  'hitter'),
+            ('SS',   'Trevor Story',                  '74 R · 130 H · 21 HR · 70 RBI · 22 SB · .249 AVG · .731 OPS',  'hitter'),
+            ('OF1',   'Christian Yelich',              '73 R · 129 H · 18 HR · 69 RBI · 16 SB · .255 AVG · .759 OPS',  'hitter'),
+            ('OF2',   'Jarren Duran',                  '82 R · 143 H · 19 HR · 71 RBI · 25 SB · .262 AVG · .772 OPS',  'hitter'),
+            ('OF3',   'Colton Cowser',                 '66 R · 105 H · 21 HR · 62 RBI · 11 SB · .229 AVG · .729 OPS',  'hitter'),
+            ('UTIL1',   'Kyle Teel',                     '50 R · 92 H · 12 HR · 43 RBI · 5 SB · .243 AVG · .715 OPS',  'hitter'),
+            ('UTIL2',   'Dominic Canzone',               '44 R · 88 H · 14 HR · 52 RBI · 3 SB · .234 AVG · .688 OPS',  'hitter'),
+            ('SP1',   'Garrett Crochet',               '14 W · 9 L · 0 SV · 239 K · 0 HLD · 3.02 ERA · 1.08 WHIP',  'sp'),
+            ('SP2',   'Cole Ragans',                   '12 W · 9 L · 0 SV · 211 K · 0 HLD · 3.31 ERA · 1.18 WHIP',  'sp'),
+            ('SP3',   'Joe Ryan',                      '11 W · 10 L · 0 SV · 189 K · 0 HLD · 3.81 ERA · 1.14 WHIP',  'sp'),
+            ('SP4',   'Max Meyer',                     '8 W · 9 L · 0 SV · 137 K · 1 HLD · 4.05 ERA · 1.30 WHIP',  'sp'),
+            ('SP5',   'Jacob Misiorowski',             '8 W · 9 L · 0 SV · 156 K · 1 HLD · 4.10 ERA · 1.34 WHIP',  'sp'),
+            ('RP1',   'Jeremiah Estrada',              '4 W · 3 L · 0 SV · 92 K · 15 HLD · 3.21 ERA · 1.16 WHIP',  'rp'),
+            ('RP2',   'Josh Hader',                    '3 W · 3 L · 29 SV · 83 K · 3 HLD · 3.29 ERA · 1.12 WHIP',  'rp'),
+            ('RP3',   'Ryan Helsley',                  '3 W · 3 L · 26 SV · 76 K · 3 HLD · 3.48 ERA · 1.22 WHIP',  'rp'),
+            ('RP4',   'Greg Weissert',                 '3 W · 3 L · 1 SV · 58 K · 17 HLD · 4.31 ERA · 1.36 WHIP',  'rp'),
+            ('RP5',   'Carlos Estévez',                '3 W · 3 L · 31 SV · 61 K · 2 HLD · 4.40 ERA · 1.34 WHIP',  'rp'),
+          ]},
+          {'rank': 8,  'name': "Hello",                  'total': 82.0,  'lineup': [
+            ('C',   'J.T. Realmuto',                 '58 R · 110 H · 15 HR · 58 RBI · 9 SB · .258 AVG · .741 OPS',  'hitter'),
+            ('1B',   'Willson Contreras',             '72 R · 123 H · 23 HR · 74 RBI · 5 SB · .253 AVG · .787 OPS',  'hitter'),
+            ('2B',   'Jackson Holliday',              '62 R · 108 H · 13 HR · 49 RBI · 13 SB · .251 AVG · .725 OPS',  'hitter'),
+            ('3B',   'Noelvi Marte',                  '61 R · 117 H · 17 HR · 59 RBI · 14 SB · .249 AVG · .713 OPS',  'hitter'),
+            ('SS',   'Mookie Betts',                  '83 R · 145 H · 20 HR · 77 RBI · 8 SB · .267 AVG · .786 OPS',  'hitter'),
+            ('OF1',   'Juan Soto',                '38 HR · 108 R · 100 RBI · 17 SB · .270 AVG','hitter'),
+            ('OF2',   'Ronald Acuña Jr.',              '102 R · 149 H · 29 HR · 83 RBI · 26 SB · .278 AVG · .882 OPS',  'hitter'),
+            ('OF3',   'Jackson Merrill',               '77 R · 151 H · 23 HR · 79 RBI · 9 SB · .272 AVG · .784 OPS',  'hitter'),
+            ('UTIL1',   'Oneil Cruz',                    '78 R · 115 H · 25 HR · 70 RBI · 25 SB · .244 AVG · .783 OPS',  'hitter'),
+            ('UTIL2',   'Lawrence Butler',               '74 R · 122 H · 22 HR · 67 RBI · 16 SB · .241 AVG · .738 OPS',  'hitter'),
+            ('SP1',   'Tarik Skubal',                  '14 W · 9 L · 0 SV · 243 K · 0 HLD · 2.79 ERA · 1.01 WHIP',  'sp'),
+            ('SP2',   'Yusei Kikuchi',                 '10 W · 11 L · 0 SV · 182 K · 0 HLD · 4.11 ERA · 1.29 WHIP',  'sp'),
+            ('SP3',   'Kris Bubic',                    '9 W · 9 L · 0 SV · 141 K · 1 HLD · 3.91 ERA · 1.30 WHIP',  'sp'),
+            ('SP4',   'Shane Bieber',                  '8 W · 7 L · 0 SV · 115 K · 1 HLD · 3.74 ERA · 1.21 WHIP',  'sp'),
+            ('SP5',   'Jack Leiter',                   '9 W · 10 L · 0 SV · 145 K · 0 HLD · 4.52 ERA · 1.37 WHIP',  'sp'),
+            ('RP1',   'Trevor Megill',                 '3 W · 3 L · 11 SV · 82 K · 9 HLD · 3.42 ERA · 1.17 WHIP',  'rp'),
+            ('RP2',   'Blake Treinen',                 '3 W · 3 L · 1 SV · 64 K · 14 HLD · 3.79 ERA · 1.26 WHIP',  'rp'),
+            ('RP3',   'Seranthony Domínguez',          '3 W · 3 L · 20 SV · 71 K · 6 HLD · 3.84 ERA · 1.30 WHIP',  'rp'),
+            ('RP4',   'Mark Leiter Jr.',               '3 W · 3 L · 6 SV · 66 K · 13 HLD · 3.91 ERA · 1.31 WHIP',  'rp'),
+            ('RP5',   'Justin Sterner',                '3 W · 3 L · 8 SV · 64 K · 10 HLD · 4.35 ERA · 1.31 WHIP',  'rp'),
+          ]},
+          {'rank': 9,  'name': "Miller Lite's",          'total': 82.0,  'lineup': [
+            ('C',   'William Contreras',             '72 R · 138 H · 21 HR · 81 RBI · 5 SB · .263 AVG · .784 OPS',  'hitter'),
+            ('1B',   'Freddie Freeman',               '83 R · 147 H · 22 HR · 82 RBI · 8 SB · .270 AVG · .805 OPS',  'hitter'),
+            ('2B',   'Marcus Semien',                 '70 R · 126 H · 19 HR · 66 RBI · 8 SB · .245 AVG · .728 OPS',  'hitter'),
+            ('3B',   'Maikel Garcia',                 '82 R · 156 H · 13 HR · 66 RBI · 25 SB · .270 AVG · .731 OPS',  'hitter'),
+            ('SS',   'Geraldo Perdomo',               '81 R · 141 H · 11 HR · 55 RBI · 18 SB · .255 AVG · .720 OPS',  'hitter'),
+            ('OF1',   'Mike Trout',                    '65 R · 101 H · 25 HR · 69 RBI · 3 SB · .238 AVG · .811 OPS',  'hitter'),
+            ('OF2',   'Ian Happ',                      '80 R · 130 H · 21 HR · 75 RBI · 8 SB · .239 AVG · .753 OPS',  'hitter'),
+            ('OF3',   'Michael Harris II',             '73 R · 139 H · 18 HR · 67 RBI · 19 SB · .261 AVG · .725 OPS',  'hitter'),
+            ('UTIL1',   'Vinnie Pasquantino',            '73 R · 145 H · 24 HR · 87 RBI · 1 SB · .257 AVG · .767 OPS',  'hitter'),
+            ('UTIL2',   'Mickey Moniak',                 '61 R · 111 H · 20 HR · 66 RBI · 9 SB · .254 AVG · .764 OPS',  'hitter'),
+            ('SP1',   'Zack Wheeler',                  '11 W · 7 L · 0 SV · 178 K · 0 HLD · 3.20 ERA · 1.09 WHIP',  'sp'),
+            ('SP2',   'Brandon Woodruff',              '10 W · 10 L · 0 SV · 176 K · 0 HLD · 3.85 ERA · 1.17 WHIP',  'sp'),
+            ('SP3',   'MacKenzie Gore',                '10 W · 9 L · 0 SV · 182 K · 0 HLD · 3.82 ERA · 1.26 WHIP',  'sp'),
+            ('SP4',   'Luis Castillo',                 '11 W · 10 L · 0 SV · 172 K · 0 HLD · 3.86 ERA · 1.22 WHIP',  'sp'),
+            ('SP5',   'Grayson Rodriguez',             '8 W · 8 L · 0 SV · 136 K · 0 HLD · 3.82 ERA · 1.25 WHIP',  'sp'),
+            ('RP1',   'Aroldis Chapman',               '3 W · 3 L · 31 SV · 86 K · 2 HLD · 3.00 ERA · 1.18 WHIP',  'rp'),
+            ('RP2',   'Fernando Cruz',                 '3 W · 3 L · 1 SV · 81 K · 16 HLD · 3.30 ERA · 1.19 WHIP',  'rp'),
+            ('RP3',   'Alex Vesia',                    '3 W · 3 L · 1 SV · 75 K · 18 HLD · 3.69 ERA · 1.22 WHIP',  'rp'),
+            ('RP4',   'Robert Garcia',                 '3 W · 3 L · 20 SV · 70 K · 6 HLD · 3.53 ERA · 1.25 WHIP',  'rp'),
+            ('RP5',   'Emilio Pagán',                  '3 W · 3 L · 27 SV · 73 K · 4 HLD · 4.14 ERA · 1.24 WHIP',  'rp'),
+          ]},
+          {'rank': 10, 'name': "Paddy's Pub",            'total': 66.5,  'lineup': [
+            ('C',   'Shea Langeliers',               '71 R · 122 H · 29 HR · 77 RBI · 6 SB · .256 AVG · .809 OPS',  'hitter'),
+            ('1B',   'Alec Burleson',                 '66 R · 139 H · 21 HR · 74 RBI · 5 SB · .263 AVG · .747 OPS',  'hitter'),
+            ('2B',   'Jazz Chisholm Jr.',             '85 R · 121 H · 27 HR · 68 RBI · 31 SB · .233 AVG · .749 OPS',  'hitter'),
+            ('3B',   '—',                             '',  'hitter'),
+            ('SS',   'Bo Bichette',                   '74 R · 160 H · 18 HR · 73 RBI · 6 SB · .284 AVG · .762 OPS',  'hitter'),
+            ('OF1',   'Byron Buxton',                  '75 R · 117 H · 27 HR · 74 RBI · 14 SB · .250 AVG · .810 OPS',  'hitter'),
+            ('OF2',   'Andy Pages',                    '76 R · 134 H · 22 HR · 76 RBI · 9 SB · .256 AVG · .756 OPS',  'hitter'),
+            ('OF3',   'Jo Adell',                      '72 R · 122 H · 31 HR · 80 RBI · 10 SB · .237 AVG · .764 OPS',  'hitter'),
+            ('UTIL1',   'Willy Adames',                  '85 R · 133 H · 29 HR · 84 RBI · 11 SB · .235 AVG · .761 OPS',  'hitter'),
+            ('UTIL2',   'Spencer Torkelson',             '72 R · 123 H · 26 HR · 81 RBI · 2 SB · .229 AVG · .745 OPS',  'hitter'),
+            ('SP1',   'Sonny Gray',                    '12 W · 10 L · 0 SV · 190 K · 0 HLD · 3.69 ERA · 1.21 WHIP',  'sp'),
+            ('SP2',   'Nathan Eovaldi',                '11 W · 9 L · 0 SV · 172 K · 0 HLD · 3.65 ERA · 1.20 WHIP',  'sp'),
+            ('SP3',   'Drew Rasmussen',                '11 W · 10 L · 0 SV · 161 K · 0 HLD · 3.72 ERA · 1.22 WHIP',  'sp'),
+            ('SP4',   'Jack Flaherty',                 '10 W · 10 L · 0 SV · 177 K · 0 HLD · 3.89 ERA · 1.26 WHIP',  'sp'),
+            ('SP5',   'Chris Bassitt',                 '10 W · 11 L · 0 SV · 162 K · 1 HLD · 4.30 ERA · 1.33 WHIP',  'sp'),
+            ('RP1',   'Edwin Díaz',                    '4 W · 3 L · 36 SV · 91 K · 3 HLD · 3.03 ERA · 1.09 WHIP',  'rp'),
+            ('RP2',   'Devin Williams',                '4 W · 3 L · 32 SV · 81 K · 3 HLD · 3.11 ERA · 1.19 WHIP',  'rp'),
+            ('RP3',   'Jose A. Ferrer',                '4 W · 3 L · 3 SV · 68 K · 16 HLD · 3.11 ERA · 1.20 WHIP',  'rp'),
+            ('RP4',   'Luke Weaver',                   '4 W · 3 L · 4 SV · 71 K · 14 HLD · 3.69 ERA · 1.20 WHIP',  'rp'),
+            ('RP5',   'JoJo Romero',                   '3 W · 3 L · 12 SV · 61 K · 9 HLD · 3.57 ERA · 1.33 WHIP',  'rp'),
+          ]},
+          {'rank': 11, 'name': "CPLL All-Stars",         'total': 60.0,  'lineup': [
+            ('C',   'Adley Rutschman',               '66 R · 123 H · 17 HR · 64 RBI · 1 SB · .251 AVG · .748 OPS',  'hitter'),
+            ('1B',   'Michael Busch',                 '74 R · 126 H · 25 HR · 80 RBI · 3 SB · .242 AVG · .768 OPS',  'hitter'),
+            ('2B',   'Gleyber Torres',                '75 R · 141 H · 17 HR · 69 RBI · 7 SB · .256 AVG · .738 OPS',  'hitter'),
+            ('3B',   'Austin Riley',                  '82 R · 146 H · 30 HR · 90 RBI · 2 SB · .259 AVG · .801 OPS',  'hitter'),
+            ('SS',   'Trea Turner',                   '86 R · 162 H · 17 HR · 74 RBI · 25 SB · .283 AVG · .775 OPS',  'hitter'),
+            ('OF1',   'Heliot Ramos',                  '78 R · 141 H · 24 HR · 78 RBI · 6 SB · .257 AVG · .766 OPS',  'hitter'),
+            ('OF2',   'Giancarlo Stanton',             '48 R · 76 H · 24 HR · 59 RBI · 0 SB · .218 AVG · .748 OPS',  'hitter'),
+            ('OF3',   'Bryan Reynolds',                '76 R · 145 H · 17 HR · 72 RBI · 6 SB · .257 AVG · .741 OPS',  'hitter'),
+            ('UTIL1',   'Cody Bellinger',                '72 R · 132 H · 21 HR · 68 RBI · 11 SB · .247 AVG · .736 OPS',  'hitter'),
+            ('UTIL2',   'Christian Walker',              '68 R · 117 H · 27 HR · 77 RBI · 4 SB · .229 AVG · .732 OPS',  'hitter'),
+            ('SP1',   'Max Fried',                     '13 W · 9 L · 0 SV · 180 K · 0 HLD · 3.28 ERA · 1.21 WHIP',  'sp'),
+            ('SP2',   'Blake Snell',                   '10 W · 7 L · 0 SV · 174 K · 0 HLD · 3.54 ERA · 1.25 WHIP',  'sp'),
+            ('SP3',   'Tanner Bibee',                  '10 W · 11 L · 0 SV · 172 K · 0 HLD · 4.10 ERA · 1.27 WHIP',  'sp'),
+            ('SP4',   'Zac Gallen',                    '11 W · 11 L · 0 SV · 174 K · 0 HLD · 4.24 ERA · 1.33 WHIP',  'sp'),
+            ('SP5',   'Trey Yesavage',                 '8 W · 7 L · 0 SV · 148 K · 1 HLD · 3.72 ERA · 1.26 WHIP',  'sp'),
+            ('RP1',   'David Bednar',                  '4 W · 3 L · 33 SV · 79 K · 2 HLD · 3.25 ERA · 1.14 WHIP',  'rp'),
+            ('RP2',   'Garrett Whitlock',              '4 W · 3 L · 3 SV · 77 K · 14 HLD · 3.47 ERA · 1.19 WHIP',  'rp'),
+            ('RP3',   'Andrés Muñoz',                  '4 W · 3 L · 28 SV · 81 K · 3 HLD · 2.92 ERA · 1.17 WHIP',  'rp'),
+            ('RP4',   'Michael Wacha',                 '10 W · 11 L · 0 SV · 135 K · 0 HLD · 4.50 ERA · 1.33 WHIP',  'rp'),
+            ('RP5',   'Hunter Greene',                 '5 W · 5 L · 0 SV · 99 K · 0 HLD · 3.91 ERA · 1.18 WHIP',  'rp'),
+          ]},
+          {'rank': 12, 'name': "Ms. Dean's Lean",        'total': 58.5,  'lineup': [
+            ('C',   'Yainer Diaz',                   '59 R · 131 H · 18 HR · 66 RBI · 2 SB · .269 AVG · .734 OPS',  'hitter'),
+            ('1B',   'Nick Kurtz',                    '84 R · 125 H · 34 HR · 88 RBI · 3 SB · .251 AVG · .858 OPS',  'hitter'),
+            ('2B',   'Matt McLain',                   '67 R · 115 H · 18 HR · 58 RBI · 16 SB · .236 AVG · .716 OPS',  'hitter'),
+            ('3B',   'Matt Chapman',                  '83 R · 128 H · 27 HR · 78 RBI · 9 SB · .240 AVG · .782 OPS',  'hitter'),
+            ('SS',   'Jacob Wilson',                  '66 R · 157 H · 7 HR · 57 RBI · 5 SB · .293 AVG · .724 OPS',  'hitter'),
+            ('OF1',   'George Springer',               '82 R · 131 H · 27 HR · 76 RBI · 12 SB · .263 AVG · .818 OPS',  'hitter'),
+            ('OF2',   'Teoscar Hernández',             '78 R · 134 H · 27 HR · 81 RBI · 6 SB · .264 AVG · .794 OPS',  'hitter'),
+            ('OF3',   'Kerry Carpenter',               '60 R · 108 H · 23 HR · 68 RBI · 3 SB · .250 AVG · .783 OPS',  'hitter'),
+            ('UTIL1',   'Kyle Manzardo',                 '59 R · 107 H · 23 HR · 72 RBI · 1 SB · .233 AVG · .748 OPS',  'hitter'),
+            ('UTIL2',   'Josh Naylor',                   '70 R · 136 H · 20 HR · 74 RBI · 13 SB · .250 AVG · .725 OPS',  'hitter'),
+            ('SP1',   'Dylan Cease',                   '12 W · 9 L · 0 SV · 209 K · 0 HLD · 3.54 ERA · 1.21 WHIP',  'sp'),
+            ('SP2',   'Shane McClanahan',              '9 W · 8 L · 0 SV · 158 K · 0 HLD · 3.35 ERA · 1.16 WHIP',  'sp'),
+            ('SP3',   'Kevin Gausman',                 '11 W · 10 L · 0 SV · 181 K · 0 HLD · 3.98 ERA · 1.24 WHIP',  'sp'),
+            ('SP4',   'Ryan Pepiot',                   '10 W · 11 L · 0 SV · 184 K · 0 HLD · 4.02 ERA · 1.26 WHIP',  'sp'),
+            ('SP5',   'Andrew Abbott',                 '9 W · 11 L · 0 SV · 157 K · 0 HLD · 4.53 ERA · 1.31 WHIP',  'sp'),
+            ('RP1',   'Jeff Hoffman',                  '3 W · 3 L · 26 SV · 77 K · 4 HLD · 3.40 ERA · 1.17 WHIP',  'rp'),
+            ('RP2',   'Daniel Palencia',               '3 W · 3 L · 30 SV · 75 K · 4 HLD · 3.61 ERA · 1.26 WHIP',  'rp'),
+            ('RP3',   'Hunter Gaddis',                 '3 W · 3 L · 3 SV · 64 K · 14 HLD · 4.09 ERA · 1.27 WHIP',  'rp'),
+            ('RP4',   'Paul Sewald',                   '3 W · 3 L · 10 SV · 57 K · 9 HLD · 4.39 ERA · 1.30 WHIP',  'rp'),
+            ('RP5',   'Shane Baz',                     '10 W · 10 L · 0 SV · 156 K · 0 HLD · 4.29 ERA · 1.33 WHIP',  'rp'),
+          ]},
+        ] %}
+
+        {% for team in teams %}
         {% set loop_id = 'team-' ~ loop.index %}
         <div class="accordion-item">
           <h2 class="accordion-header" id="heading-{{ loop_id }}">
@@ -90,9 +334,9 @@
                     data-bs-target="#collapse-{{ loop_id }}"
                     aria-expanded="false"
                     aria-controls="collapse-{{ loop_id }}">
-              <span class="me-2 text-muted small">#{{ loop.index }}</span>
+              <span class="me-2 text-muted">#{{ team.rank }}</span>
               <strong>{{ team.name }}</strong>
-              <span class="ms-2 text-muted small">(Total Rank: {{ team.rank }})</span>
+              <span class="ms-2 text-muted small">(Total Rank: {{ team.total }})</span>
             </button>
           </h2>
           <div id="collapse-{{ loop_id }}" class="accordion-collapse collapse"
@@ -101,26 +345,18 @@
             <div class="accordion-body p-2">
               <table class="table table-sm table-striped mb-0" style="font-size:0.85rem;">
                 <thead>
-                  <tr>
-                    <th style="width:6rem;">Slot</th>
-                    <th>Player</th>
-                    <th>Projections</th>
-                  </tr>
+                  <tr><th style="width:5rem;">Slot</th><th>Player</th><th>Projections</th></tr>
                 </thead>
                 <tbody>
-                  {% for row in team.display_rows %}
+                  {% for slot, name, stats, type in team.lineup %}
                   <tr>
                     <td>
-                      <span class="badge
-                        {% if row.type == 'hitter' %}bg-primary
-                        {% elif row.type == 'sp' %}bg-success
-                        {% else %}bg-warning text-dark
-                        {% endif %}">
-                        {{ row.slot }}
+                      <span class="badge {% if type == 'hitter' %}bg-primary{% elif type == 'sp' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                        {{ slot }}
                       </span>
                     </td>
-                    <td>{{ row.name }}</td>
-                    <td class="text-muted">{{ row.stats }}</td>
+                    <td>{{ name }}</td>
+                    <td class="text-muted">{{ stats }}</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -129,11 +365,61 @@
           </div>
         </div>
         {% endfor %}
-      </div>
 
-      {% endif %}{# end if table_html #}
+      </div>{# end accordion #}
 
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var ascCats = ['L', 'ERA', 'WHIP'];
+    var table   = document.getElementById('proj-standings');
+    var headers = Array.from(table.querySelectorAll('thead th'));
+    var tbody   = table.querySelector('tbody');
+    var sortCol = null;
+    var sortAsc = false;
+
+    // Highlight Total Rank column
+    var totalIdx = headers.findIndex(function(th) { return th.textContent.trim() === 'Total Rank'; });
+    if (totalIdx >= 0) {
+      headers[totalIdx].classList.add('total-rank');
+      Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
+        tr.cells[totalIdx].classList.add('total-rank');
+      });
+    }
+
+    // Make headers clickable
+    headers.forEach(function(th, colIdx) {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', function() {
+        var colName = th.textContent.trim().replace(/[\s▾▴]+$/, '');
+        var defaultAsc = ascCats.includes(colName);
+        if (sortCol === colIdx) {
+          sortAsc = !sortAsc;
+        } else {
+          sortCol = colIdx;
+          sortAsc = defaultAsc;
+        }
+
+        headers.forEach(function(h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+        th.classList.add(sortAsc ? 'sorted-asc' : 'sorted-desc');
+
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) {
+          var av = a.cells[colIdx].textContent.trim();
+          var bv = b.cells[colIdx].textContent.trim();
+          var an = parseFloat(av);
+          var bn = parseFloat(bv);
+          var cmp = isNaN(an) || isNaN(bn) ? av.localeCompare(bv) : an - bn;
+          return sortAsc ? cmp : -cmp;
+        });
+        rows.forEach(function(r) { tbody.appendChild(r); });
+      });
+    });
+  })();
+</script>
 {% endblock %}

@@ -60,12 +60,17 @@ def load_batting_projections(csv_file):
 
 
 def load_pitching_projections(csv_file):
-    """Parse FanGraphs Steamer CSV. Returns {normalized_name: stat_dict}."""
+    """Parse FanGraphs Steamer CSV. Returns {normalized_name: stat_dict}.
+    When multiple rows share a normalized name, keeps the one with the highest WAR.
+    """
     df = pd.read_csv(csv_file)
     df.columns = [c.strip() for c in df.columns]
+    # Keep only the highest-WAR row per normalized name
+    df['_norm'] = df['Name'].apply(normalize_name)
+    df = df.sort_values('WAR', ascending=False).drop_duplicates(subset='_norm')
     result = {}
     for _, row in df.iterrows():
-        name = normalize_name(row.get('Name', ''))
+        name = row['_norm']
         if not name:
             continue
         result[name] = {
@@ -84,6 +89,7 @@ def load_pitching_projections(csv_file):
             'ERA':  _float(row.get('ERA'), default=4.50),
             'WHIP': _float(row.get('WHIP'), default=1.30),
             'FIP':  _float(row.get('FIP'), default=4.50),
+            'WAR':  _float(row.get('WAR')),
         }
     return result
 
@@ -111,9 +117,10 @@ def build_lineup(roster, batting_proj, pitching_proj):
       team_stats    – dict matching calculate_roto_standings() column names
       unmatched     – list of rostered player names not found in projections
     """
-    hitters  = []   # (pid, full_name, positions, bat_proj)
-    sp_pool  = []   # (pid, full_name, pit_proj)  — SP-eligible
-    rp_pool  = []   # (pid, full_name, pit_proj)  — RP/P-eligible only
+    hitters   = []   # (pid, full_name, positions, bat_proj)
+    sp_pool   = []   # (pid, full_name, pit_proj)  — SP-eligible
+    rp_pool   = []   # (pid, full_name, pit_proj)  — RP/P-eligible only
+    sp_has_rp = {}   # pid -> bool: whether SP-eligible player also has RP eligibility
     unmatched = []
 
     for player in roster:
@@ -132,6 +139,7 @@ def build_lineup(roster, batting_proj, pitching_proj):
             proj = pitching_proj[norm]
             if 'SP' in positions:
                 sp_pool.append((pid, full_name, proj))
+                sp_has_rp[pid] = bool(positions & {'RP', 'P'})
             else:
                 rp_pool.append((pid, full_name, proj))
         else:
@@ -176,20 +184,26 @@ def build_lineup(roster, batting_proj, pitching_proj):
     for i in range(len(util_eligible), 2):
         slots[f'UTIL{i + 1}'] = None
 
-    # SP (5 slots) — best FIP
-    sp_pool.sort(key=lambda x: x[2]['FIP'])
+    # SP (5 slots) — best WAR
+    sp_pool.sort(key=lambda x: x[2]['WAR'], reverse=True)
     for i, (pid, name, proj) in enumerate(sp_pool[:5]):
         slots[f'SP{i + 1}'] = (name, proj)
         used.add(pid)
     for i in range(len(sp_pool), 5):
         slots[f'SP{i + 1}'] = None
 
-    # RP (5 slots) — best ERA; excess SPs join the pool
+    # RP (5 slots) — priority: pure relievers > SP/RP dual > excess SP-only; all by WAR
     extra_sps = [(pid, name, proj) for pid, name, proj in sp_pool[5:]
                  if pid not in used]
-    all_rp = [(pid, name, proj) for pid, name, proj in (rp_pool + extra_sps)
-              if pid not in used]
-    all_rp.sort(key=lambda x: x[2]['ERA'])
+    extra_rp_eligible = [(pid, name, proj) for pid, name, proj in extra_sps
+                         if sp_has_rp.get(pid)]
+    extra_sp_only     = [(pid, name, proj) for pid, name, proj in extra_sps
+                         if not sp_has_rp.get(pid)]
+    all_rp = (
+        sorted(rp_pool,           key=lambda x: x[2]['WAR'], reverse=True) +
+        sorted(extra_rp_eligible, key=lambda x: x[2]['WAR'], reverse=True) +
+        sorted(extra_sp_only,     key=lambda x: x[2]['WAR'], reverse=True)
+    )
     for i, (pid, name, proj) in enumerate(all_rp[:5]):
         slots[f'RP{i + 1}'] = (name, proj)
         used.add(pid)

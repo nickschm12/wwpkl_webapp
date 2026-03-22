@@ -320,76 +320,9 @@ def record_book():
                            season_records=season_records,
                            week_records=week_records)
 
-@app.route('/projections', methods=['GET', 'POST'])
+@app.route('/projections')
 def projections():
-    error = None
-    table_html = None
-    team_lineups = None   # list of {name, rank, display_rows} ordered by projected standing
-    unmatched_map = None  # {team_name: [player_names]}
-
-    if request.method == 'POST':
-        batting_file  = request.files.get('batting_csv')
-        pitching_file = request.files.get('pitching_csv')
-
-        if not batting_file or not pitching_file or \
-                batting_file.filename == '' or pitching_file.filename == '':
-            error = 'Please select both a batting projection file and a pitching projection file.'
-        else:
-            try:
-                batting_proj  = load_batting_projections(batting_file)
-                pitching_proj = load_pitching_projections(pitching_file)
-
-                # Fetch league + teams from DB
-                league = session.query(League).filter_by(year=config.CURRENT_YEAR).first()
-                if not league:
-                    error = f'No league found in the database for {config.CURRENT_YEAR}. ' \
-                            'Make sure the season data has been imported.'
-                else:
-                    db_teams = get_teams(session, config.CURRENT_YEAR)
-
-                    rows         = []
-                    lineups_raw  = {}
-                    unmatched_map = {}
-
-                    for team in db_teams:
-                        roster = get_roster(league.league_id, team.team_key)
-                        display_rows, team_stats, unmatched = build_lineup(
-                            roster, batting_proj, pitching_proj
-                        )
-                        team_stats['name'] = team.name
-                        rows.append(team_stats)
-                        lineups_raw[team.name] = display_rows
-                        if unmatched:
-                            unmatched_map[team.name] = unmatched
-
-                    proj_df    = pd.DataFrame(rows)
-                    standings  = calculate_roto_standings(proj_df, with_ranks=False)
-                    standings.columns = columns
-
-                    table_html = standings.to_html(
-                        table_id='proj-table',
-                        index=False,
-                        classes=['table-striped', 'table', 'table-bordered',
-                                 'table-sm', 'compact', 'nowrap']
-                    )
-
-                    # Build lineup list in standings order (best first)
-                    team_lineups = [
-                        {'name': row['Team'], 'rank': int(row['Total Rank']),
-                         'display_rows': lineups_raw[row['Team']]}
-                        for _, row in standings.iterrows()
-                        if row['Team'] in lineups_raw
-                    ]
-
-            except Exception as e:
-                error = f'Error processing projections: {e}'
-
-    return render_template('projections.html',
-                           active_tab='projections',
-                           error=error,
-                           table_html=table_html,
-                           team_lineups=team_lineups,
-                           unmatched_map=unmatched_map)
+    return render_template('projections.html', active_tab='projections')
 
 
 if __name__ == '__main__':
