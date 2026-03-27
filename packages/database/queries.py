@@ -2,7 +2,8 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
-from .models import League, Team, SeasonStats, WeekStats
+from .models import League, Team, SeasonStats, WeekStats, RightsPlayerDetails
+from packages.projections import normalize_name
 
 def insert_league(session,league_id,name,year,num_of_teams,current_week):
     league = League(
@@ -153,6 +154,30 @@ def get_all_season_stats_all_years(engine):
         join leagues l on t.league_id = l.league_id
     """)
     return pd.read_sql_query(query, con=engine)
+
+def get_all_rights_player_details(session):
+    """Returns {player_name_norm: RightsPlayerDetails}"""
+    return {r.player_name_norm: r for r in session.query(RightsPlayerDetails).all()}
+
+
+def upsert_rights_player_details(session, player_name, level, ranking, fv=None):
+    norm = normalize_name(player_name)
+    existing = session.query(RightsPlayerDetails).filter_by(player_name_norm=norm).first()
+    if existing:
+        existing.player_name = player_name
+        existing.level = level or None
+        existing.ranking = int(ranking) if ranking else None
+        existing.fv = int(fv) if fv else None
+    else:
+        session.add(RightsPlayerDetails(
+            player_name_norm=norm,
+            player_name=player_name,
+            level=level or None,
+            ranking=int(ranking) if ranking else None,
+            fv=int(fv) if fv else None,
+        ))
+    session.commit()
+
 
 def get_all_week_stats_all_years(engine):
     query = text("""

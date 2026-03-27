@@ -60,4 +60,57 @@
     {% block content %}{% endblock %}
   </body>
   {% block scripts %}{% endblock %}
+  <script>
+    // Reusable column sort for any table with class "sortable-table"
+    // Mark sortable <th> elements with class "sortable"
+    document.querySelectorAll('.sortable-table').forEach(function(table) {
+      var sortState = {};
+      table.querySelectorAll('th.sortable').forEach(function(th) {
+        th.addEventListener('click', function() {
+          var colIdx = Array.from(th.parentElement.children).indexOf(th);
+          var asc = !sortState[colIdx];
+          sortState[colIdx] = asc;
+
+          // Update icons
+          table.querySelectorAll('th.sortable .sort-icon').forEach(function(icon) {
+            icon.textContent = '⇅';
+          });
+          th.querySelector('.sort-icon').textContent = asc ? '↑' : '↓';
+
+          var tbody = table.querySelector('tbody');
+          var rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var aVal = a.children[colIdx].textContent.trim();
+            var bVal = b.children[colIdx].textContent.trim();
+            var aNum = parseFloat(aVal.replace(/[^0-9.\-]/g, ''));
+            var bNum = parseFloat(bVal.replace(/[^0-9.\-]/g, ''));
+            // Treat '—' as worst value
+            var aEmpty = (aVal === '—' || aVal === '');
+            var bEmpty = (bVal === '—' || bVal === '');
+            if (aEmpty && bEmpty) return 0;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+              return asc ? aNum - bNum : bNum - aNum;
+            }
+            return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          });
+          rows.forEach(function(row) { tbody.appendChild(row); });
+        });
+      });
+
+      // Default sort by Rank ascending, or Cost descending if no Rank column
+      var rankTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
+        return th.textContent.trim().startsWith('Rank');
+      });
+      if (rankTh) {
+        rankTh.click();
+      } else {
+        var costTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
+          return th.textContent.trim().startsWith('Cost');
+        });
+        if (costTh) { costTh.click(); costTh.click(); } // two clicks = descending
+      }
+    });
+  </script>
 </html>

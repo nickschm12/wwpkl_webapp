@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import os
 import pandas as pd
 
@@ -6,7 +6,8 @@ from sqlalchemy.orm import scoped_session
 from packages.database.queries import *
 from packages.database import connections
 from packages.yahoo.api import get_roster
-from packages.projections import load_batting_projections, load_pitching_projections, build_lineup
+from packages.projections import load_batting_projections, load_pitching_projections, build_lineup, normalize_name
+from packages.sheets import fetch_rights_players, fetch_keeper_costs
 import packages.config as config
 
 app = Flask(__name__)
@@ -218,48 +219,53 @@ def team_info():
     if not team or team not in teams:
         team = teams[0]
 
-    # get stats and create roto standings
-    stats = get_season_stats(engine,season)
-    no_data = stats.empty
+    # Rights players from Google Sheet + DB details
+    try:
+        all_rights = fetch_rights_players()
+    except Exception:
+        all_rights = {}
 
-    ranks_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'W', 'L', 'SV', 'SO', 'HLD', 'ERA', 'WHIP']
-    stats_labels = ['R', 'H', 'HR', 'RBI', 'SB', 'W', 'L', 'SV', 'SO', 'HLD']
-    ranks = []
-    team_stats = []
-    league_avg = []
+    details_map = get_all_rights_player_details(session)
+    raw_rights = all_rights.get(team, [])
+    rights_players = []
+    for name in raw_rights:
+        d = details_map.get(normalize_name(name))
+        rights_players.append({
+            'name':    name,
+            'level':   d.level    if d else '',
+            'ranking': d.ranking  if d else '',
+            'fv':      d.fv       if d else '',
+        })
 
-    if not no_data:
-        roto = calculate_roto_standings(stats, True)
-
-        # map each team to a row so its easier to locate
-        team_row_map = {}
-        for row in range(0, len(roto)):
-            team_row_map[roto.iloc[row]['name']] = row
-
-        # find the league average for all counting stats
-        stat_names = ['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']
-        for stat in stat_names:
-            league_avg.append(roto[stat].mean())
-
-        # find a teams row using the team to row map and the team that was selected
-        team_row = roto.iloc[team_row_map[team]]
-
-        ranks = team_row[['runs_rank','hits_rank','homeruns_rank','rbis_rank','sb_rank','avg_rank','ops_rank',
-                          'wins_rank','loses_rank','saves_rank','strikeouts_rank','holds_rank','era_rank','whip_rank']]
-        team_stats = team_row[['runs', 'hits', 'homeruns', 'rbis', 'sb', 'wins', 'loses', 'saves', 'strikeouts', 'holds']]
+    # Keeper calculator: Yahoo roster + pre-calculated costs
+    keeper_roster = []
+    keeper_error = None
+    team_obj = next((t for t in results if t.name == team), None)
+    league_obj = session.query(League).filter(League.year == season).first()
+    next_year = int(config.CURRENT_YEAR) + 1
+    if team_obj and league_obj:
+        try:
+            roster_data = get_roster(league_obj.league_id, team_obj.team_key)
+            costs_map = fetch_keeper_costs()
+            for player in roster_data:
+                name_full = player['name']['full']
+                pos = player.get('display_position', '')
+                # Default to $0.50 for players not in sheet (FirYr = current year)
+                cost = costs_map.get(normalize_name(name_full), 0.5)
+                keeper_roster.append({'name': name_full, 'position': pos, 'cost': cost})
+        except Exception as e:
+            keeper_error = str(e)
 
     return render_template( 'team_info.html',
                             active_tab='team_info',
                             team=team,
                             season=season,
-                            no_data=no_data,
                             available_years=get_available_years(session),
                             teams=teams,
-                            ranks_labels=ranks_labels,
-                            ranks=ranks,
-                            stats_labels=stats_labels,
-                            stats=team_stats,
-                            league_avg=league_avg
+                            rights_players=rights_players,
+                            keeper_roster=keeper_roster,
+                            keeper_error=keeper_error,
+                            next_year=next_year,
                           )
 
 @app.route('/rulebook')
@@ -310,7 +316,14 @@ def record_book():
     season_df = get_all_season_stats_all_years(engine)
     week_df = get_all_week_stats_all_years(engine)
 
-    season_df = season_df[season_df['year'] != '2020']
+    # Exclude incomplete seasons
+    season_df = season_df[(season_df['year'] != '2020') & (season_df['year'] != config.CURRENT_YEAR)]
+
+    # Exclude the current in-progress week
+    current_league = session.query(League).filter_by(year=config.CURRENT_YEAR).first()
+    if current_league:
+        current_week = int(current_league.current_week)
+        week_df = week_df[~((week_df['year'] == config.CURRENT_YEAR) & (week_df['week'] >= current_week))]
 
     season_records = make_records(season_df, ['year']) if not season_df.empty else []
     week_records = make_records(week_df, ['year', 'week']) if not week_df.empty else []
@@ -319,6 +332,41 @@ def record_book():
                            active_tab='record_book',
                            season_records=season_records,
                            week_records=week_records)
+
+@app.route('/admin/rights', methods=['GET', 'POST'])
+def admin_rights():
+    if request.method == 'POST':
+        for key, value in request.form.items():
+            if key.startswith('level_'):
+                player_name = key[len('level_'):]
+                level   = value.strip()
+                ranking = request.form.get(f'ranking_{player_name}', '').strip()
+                fv      = request.form.get(f'fv_{player_name}', '').strip()
+                upsert_rights_player_details(session, player_name, level, ranking, fv)
+        return redirect(url_for('admin_rights'))
+
+    try:
+        all_rights = fetch_rights_players()
+    except Exception:
+        all_rights = {}
+
+    details_map = get_all_rights_player_details(session)
+
+    teams_rights = []
+    for team_name, players in sorted(all_rights.items()):
+        rows = []
+        for name in players:
+            d = details_map.get(normalize_name(name))
+            rows.append({
+                'name':    name,
+                'level':   d.level    if d else '',
+                'ranking': d.ranking  if d else '',
+                'fv':      d.fv       if d else '',
+            })
+        teams_rights.append({'team': team_name, 'players': rows})
+
+    return render_template('admin_rights.html', teams_rights=teams_rights)
+
 
 @app.route('/projections')
 def projections():

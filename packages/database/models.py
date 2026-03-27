@@ -61,3 +61,14 @@ class WeekStats(Base):
     holds = Column(Integer)
     era = Column(Float)
     whip = Column(Float)
+
+
+class RightsPlayerDetails(Base):
+    __tablename__ = "rights_player_details"
+
+    id = Column(Integer, primary_key=True)
+    player_name_norm = Column(String(120), unique=True, nullable=False)
+    player_name = Column(String(120), nullable=False)
+    level = Column(String(20))
+    ranking = Column(Integer, nullable=True)
+    fv = Column(Integer, nullable=True)

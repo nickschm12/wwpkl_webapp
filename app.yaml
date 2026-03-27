@@ -21,3 +21,5 @@ env_variables:
   PROJECT_ID: 484894850064
   DB_SECRET_ID: wwpkl_db
   DB_SECRET_VERSION: 2
+  YAHOO_SECRET_ID: wwpkl_yahoo
+  YAHOO_SECRET_VERSION: 8
