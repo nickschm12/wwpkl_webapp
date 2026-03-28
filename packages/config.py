@@ -23,3 +23,18 @@ STAT_ID_TO_CAT = {
 }
 
 COLUMNS = ['R','H','HR','RBI','SB','AVG','OPS','IP','W','L','SV','SO','HLD','ERA','WHIP']
+
+# H2H regular season champion and playoff champion by year (2020 omitted — shortened season)
+CHAMPIONS = {
+    '2015': {'h2h_champion': "Ms. Dean's Lean", 'playoff_champion': 'Hello'},
+    '2016': {'h2h_champion': 'Hello',            'playoff_champion': 'Hello'},
+    '2017': {'h2h_champion': "Paddy's Pub",      'playoff_champion': "Paddy's Pub"},
+    '2018': {'h2h_champion': 'Hello',            'playoff_champion': 'Hello'},
+    '2019': {'h2h_champion': 'Hello',            'playoff_champion': 'Hello'},
+    '2020': {'h2h_champion': None,               'playoff_champion': None},
+    '2021': {'h2h_champion': 'Task Unit Bruiser','playoff_champion': "Paddy's Pub"},
+    '2022': {'h2h_champion': "Ms. Dean's Lean",  'playoff_champion': 'Omar Manaea'},
+    '2023': {'h2h_champion': 'Hello',            'playoff_champion': 'Hello'},
+    '2024': {'h2h_champion': 'Shmohawks',        'playoff_champion': 'The Bigots'},
+    '2025': {'h2h_champion': 'Shmohawks',        'playoff_champion': 'Hello'},
+}

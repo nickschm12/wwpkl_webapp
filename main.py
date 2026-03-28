@@ -423,8 +423,50 @@ def record_book():
     season_records = make_records(season_df, ['year']) if not season_df.empty else []
     week_records = make_records(week_df, ['year', 'week']) if not week_df.empty else []
 
+    # Compute roto champion per year from regular season weekly data
+    all_weeks = _cached_all_week_stats_all_years()
+    roto_champs = {}
+    for year in config.CHAMPIONS:
+        yr_df = all_weeks[
+            (all_weeks['year'] == year) &
+            (all_weeks['week'] < config.PLAYOFF_WEEK_START)
+        ]
+        if yr_df.empty:
+            continue
+        agg = yr_df.groupby('name').agg(
+            runs=('runs','sum'), hits=('hits','sum'), homeruns=('homeruns','sum'),
+            rbis=('rbis','sum'), sb=('sb','sum'), avg=('avg','mean'),
+            ops=('ops','mean'), wins=('wins','sum'), loses=('loses','sum'),
+            saves=('saves','sum'), strikeouts=('strikeouts','sum'),
+            holds=('holds','sum'), era=('era','mean'), whip=('whip','mean'),
+        ).reset_index()
+        roto = calculate_roto_standings(agg, False)
+        roto_champs[year] = roto.iloc[0]['name']
+    roto_champs['2020'] = "Ms. Dean's Lean"
+
+    champions = [
+        {'year': year, 'roto_champion': roto_champs.get(year), **data}
+        for year, data in sorted(config.CHAMPIONS.items(), reverse=True)
+    ]
+
+    # Stat callouts
+    from collections import Counter
+    playoff_counts = Counter(c['playoff_champion'] for c in champions if c['playoff_champion'])
+    h2h_counts = Counter(c['h2h_champion'] for c in champions if c['h2h_champion'])
+    roto_counts = Counter(c['roto_champion'] for c in champions if c['roto_champion'])
+    top_playoff = playoff_counts.most_common(1)[0]
+    top_h2h = h2h_counts.most_common(1)[0]
+    top_roto = roto_counts.most_common(1)[0]
+    callouts = [
+        {'label': 'Most Playoff Titles', 'team': top_playoff[0], 'value': f'{top_playoff[1]}x'},
+        {'label': 'Most H2H Titles',     'team': top_h2h[0],     'value': f'{top_h2h[1]}x'},
+        {'label': 'Most Roto Titles',    'team': top_roto[0],    'value': f'{top_roto[1]}x'},
+    ]
+
     return render_template('record_book.html',
                            active_tab='record_book',
+                           champions=champions,
+                           callouts=callouts,
                            season_records=season_records,
                            week_records=week_records)
 
