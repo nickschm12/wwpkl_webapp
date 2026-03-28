@@ -16,6 +16,37 @@
         </div>
       </div>
     </form>
+    {% if category_tiles %}
+    <div class="mt-4">
+      <h5>{{ season }} Category Rankings</h5>
+      <div class="mb-2 text-muted" style="font-size:0.85rem;">Rank among all teams &middot; <span class="badge bg-success">Top</span> <span class="badge bg-secondary">Mid</span> <span class="badge bg-danger">Bottom</span></div>
+      <div class="mb-1 fw-semibold text-muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">Batting</div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% for tile in category_tiles if tile.group == 'batting' %}
+        <div class="card border-{{ tile.color }} text-center" style="width:80px;">
+          <div class="card-header bg-{{ tile.color }} text-white py-1 px-0" style="font-size:0.8rem; font-weight:600;">{{ tile.label }}</div>
+          <div class="card-body py-2 px-1">
+            <div style="font-size:1.1rem; font-weight:700; line-height:1;">#{{ tile.rank }}</div>
+            <div class="text-muted" style="font-size:0.75rem;">{{ tile.value }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mb-1 fw-semibold text-muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">Pitching</div>
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        {% for tile in category_tiles if tile.group == 'pitching' %}
+        <div class="card border-{{ tile.color }} text-center" style="width:80px;">
+          <div class="card-header bg-{{ tile.color }} text-white py-1 px-0" style="font-size:0.8rem; font-weight:600;">{{ tile.label }}</div>
+          <div class="card-body py-2 px-1">
+            <div style="font-size:1.1rem; font-weight:700; line-height:1;">#{{ tile.rank }}</div>
+            <div class="text-muted" style="font-size:0.75rem;">{{ tile.value }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     {% if rights_players %}
     <div class="mt-4">
       <h5>Rights Players</h5>
@@ -78,6 +109,7 @@
       </table>
     </div>
     {% endif %}
+
   </div>
 {% endblock %}
 

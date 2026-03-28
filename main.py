@@ -80,6 +80,10 @@ def _cached_week_stats(season, week):
 def _cached_available_years():
     return get_available_years(session)
 
+@cache.memoize(timeout=1800)  # 30 min
+def _cached_season_stats(season):
+    return get_season_stats(engine, season)
+
 @cache.memoize(timeout=1800)  # 30 min — record book queries cover all years
 def _cached_all_season_stats_all_years():
     return get_all_season_stats_all_years(engine)
@@ -262,6 +266,54 @@ def team_info():
     if not team or team not in teams:
         team = teams[0]
 
+    # Category ranking tiles
+    CATS = [
+        ('runs',       'R',   '{:.0f}', 'batting'),
+        ('hits',       'H',   '{:.0f}', 'batting'),
+        ('homeruns',   'HR',  '{:.0f}', 'batting'),
+        ('rbis',       'RBI', '{:.0f}', 'batting'),
+        ('sb',         'SB',  '{:.0f}', 'batting'),
+        ('avg',        'AVG', '{:.3f}', 'batting'),
+        ('ops',        'OPS', '{:.3f}', 'batting'),
+        ('wins',       'W',   '{:.0f}', 'pitching'),
+        ('loses',      'L',   '{:.0f}', 'pitching'),
+        ('saves',      'SV',  '{:.0f}', 'pitching'),
+        ('strikeouts', 'SO',  '{:.0f}', 'pitching'),
+        ('holds',      'HLD', '{:.0f}', 'pitching'),
+        ('era',        'ERA', '{:.2f}', 'pitching'),
+        ('whip',       'WHIP','{:.2f}', 'pitching'),
+    ]
+
+    category_tiles = []
+    all_week_stats = _cached_all_week_stats(season)
+    regular_season_stats = all_week_stats[all_week_stats['week'] < config.PLAYOFF_WEEK_START]
+    if not regular_season_stats.empty:
+        stats_df = regular_season_stats.groupby('name').agg(
+            runs=('runs', 'sum'), hits=('hits', 'sum'), homeruns=('homeruns', 'sum'),
+            rbis=('rbis', 'sum'), sb=('sb', 'sum'), avg=('avg', 'mean'),
+            ops=('ops', 'mean'), wins=('wins', 'sum'), loses=('loses', 'sum'),
+            saves=('saves', 'sum'), strikeouts=('strikeouts', 'sum'),
+            holds=('holds', 'sum'), era=('era', 'mean'), whip=('whip', 'mean'),
+        ).reset_index()
+    else:
+        stats_df = regular_season_stats
+    if not stats_df.empty and team in stats_df['name'].values:
+        roto = calculate_roto_standings(stats_df, True)
+        num_teams = len(stats_df)
+        row = roto[roto['name'] == team].iloc[0]
+        for stat, label, fmt, group in CATS:
+            raw_rank = int(row[f'{stat}_rank'])
+            # Roto ranks: 12 = best, 1 = worst for all stats. Invert so display rank 1 = best.
+            rank = num_teams + 1 - raw_rank
+            color = 'success' if rank <= 4 else ('secondary' if rank <= 8 else 'danger')
+            category_tiles.append({
+                'label': label,
+                'rank': rank,
+                'value': fmt.format(row[stat]),
+                'color': color,
+                'group': group,
+            })
+
     # Rights players from Google Sheet + DB details
     try:
         all_rights = _cached_rights_players()
@@ -304,6 +356,7 @@ def team_info():
                             season=season,
                             available_years=_cached_available_years(),
                             teams=teams,
+                            category_tiles=category_tiles,
                             rights_players=rights_players,
                             keeper_roster=keeper_roster,
                             keeper_error=keeper_error,
