@@ -416,6 +416,10 @@ def admin_rights():
 def projections():
     return render_template('projections.html', active_tab='projections')
 
+@app.route('/ping')
+def ping():
+    return 'ok', 200
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
