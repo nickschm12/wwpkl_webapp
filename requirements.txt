@@ -10,6 +10,7 @@ click==8.1.8
 colorclass==2.2.2
 docopt==0.6.2
 Flask==3.1.0
+Flask-Caching==2.3.1
 google-api-core==2.24.2
 google-auth==2.38.0
 google-cloud==0.34.0

@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for
+from flask_caching import Cache
 import os
 import pandas as pd
 
@@ -11,6 +12,8 @@ from packages.sheets import fetch_rights_players, fetch_keeper_costs
 import packages.config as config
 
 app = Flask(__name__)
+
+cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 300})
 
 if os.environ.get("DB_HOST"):
     engine = connections.tcp_connection()
@@ -63,6 +66,46 @@ def calculate_roto_standings(data_frame,with_ranks):
 
     return final_df.sort_values(['Total Rank'],ascending=[0])
 
+# ── Cached data fetchers ───────────────────────────────────────────────────────
+
+@cache.memoize(timeout=1800)  # 30 min — updated by cloud functions
+def _cached_all_week_stats(season):
+    return get_all_week_stats(engine, season)
+
+@cache.memoize(timeout=1800)  # 30 min
+def _cached_week_stats(season, week):
+    return get_week_stats(engine, season, week)
+
+@cache.memoize(timeout=86400)  # 24 hours — only changes at season start
+def _cached_available_years():
+    return get_available_years(session)
+
+@cache.memoize(timeout=1800)  # 30 min — record book queries cover all years
+def _cached_all_season_stats_all_years():
+    return get_all_season_stats_all_years(engine)
+
+@cache.memoize(timeout=1800)  # 30 min
+def _cached_all_week_stats_all_years():
+    return get_all_week_stats_all_years(engine)
+
+@cache.memoize(timeout=21600)  # 6 hours — Google Sheet changes rarely
+def _cached_rights_players():
+    return fetch_rights_players()
+
+@cache.memoize(timeout=21600)  # 6 hours — Google Sheet changes rarely
+def _cached_keeper_costs():
+    return fetch_keeper_costs()
+
+@cache.memoize(timeout=3600)  # 1 hour — roster changes with pickups/trades
+def _cached_roster(league_id, team_key):
+    return get_roster(league_id, team_key)
+
+@cache.memoize(timeout=3600)  # 1 hour
+def _cached_rights_player_details():
+    return get_all_rights_player_details(session)
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
+
 @app.route('/', methods=['GET','POST'])
 def index():
     # define the default values for the current year and week
@@ -79,7 +122,7 @@ def index():
         ascending = True
 
     # get all regular season week stats (excluding playoffs)
-    all_week_stats = get_all_week_stats(engine, season)
+    all_week_stats = _cached_all_week_stats(season)
     regular_season_stats = all_week_stats[all_week_stats['week'] < config.PLAYOFF_WEEK_START]
     no_data = regular_season_stats.empty
 
@@ -151,7 +194,7 @@ def index():
                             active_tab='home',
                             season=season,
                             no_data=no_data,
-                            available_years=get_available_years(session),
+                            available_years=_cached_available_years(),
                             labels=labels,
                             sort=category,
                             categories=columns,
@@ -178,7 +221,7 @@ def week_by_week():
     ascending = category in ['L', 'ERA', 'WHIP']
 
     # get stats and create roto standings
-    stats = get_week_stats(engine, season, week)
+    stats = _cached_week_stats(season, week)
     no_data = stats.empty
 
     table_html = ''
@@ -198,7 +241,7 @@ def week_by_week():
                             week=week,
                             sort=category,
                             no_data=no_data,
-                            available_years=get_available_years(session),
+                            available_years=_cached_available_years(),
                             tables=[table_html]
                           )
 
@@ -210,7 +253,7 @@ def team_info():
 
     # define the options for the team dropdown
     teams = []
-    results = get_teams(session,season)
+    results = get_teams(session, season)
     for t in results:
         teams.append(t.name)
 
@@ -221,11 +264,11 @@ def team_info():
 
     # Rights players from Google Sheet + DB details
     try:
-        all_rights = fetch_rights_players()
+        all_rights = _cached_rights_players()
     except Exception:
         all_rights = {}
 
-    details_map = get_all_rights_player_details(session)
+    details_map = _cached_rights_player_details()
     raw_rights = all_rights.get(team, [])
     rights_players = []
     for name in raw_rights:
@@ -245,12 +288,11 @@ def team_info():
     next_year = int(config.CURRENT_YEAR) + 1
     if team_obj and league_obj:
         try:
-            roster_data = get_roster(league_obj.league_id, team_obj.team_key)
-            costs_map = fetch_keeper_costs()
+            roster_data = _cached_roster(league_obj.league_id, team_obj.team_key)
+            costs_map = _cached_keeper_costs()
             for player in roster_data:
                 name_full = player['name']['full']
                 pos = player.get('display_position', '')
-                # Default to $0.50 for players not in sheet (FirYr = current year)
                 cost = costs_map.get(normalize_name(name_full), 0.5)
                 keeper_roster.append({'name': name_full, 'position': pos, 'cost': cost})
         except Exception as e:
@@ -260,7 +302,7 @@ def team_info():
                             active_tab='team_info',
                             team=team,
                             season=season,
-                            available_years=get_available_years(session),
+                            available_years=_cached_available_years(),
                             teams=teams,
                             rights_players=rights_players,
                             keeper_roster=keeper_roster,
@@ -313,8 +355,8 @@ def record_book():
             })
         return records
 
-    season_df = get_all_season_stats_all_years(engine)
-    week_df = get_all_week_stats_all_years(engine)
+    season_df = _cached_all_season_stats_all_years()
+    week_df = _cached_all_week_stats_all_years()
 
     # Exclude incomplete seasons
     season_df = season_df[(season_df['year'] != '2020') & (season_df['year'] != config.CURRENT_YEAR)]
@@ -343,14 +385,16 @@ def admin_rights():
                 ranking = request.form.get(f'ranking_{player_name}', '').strip()
                 fv      = request.form.get(f'fv_{player_name}', '').strip()
                 upsert_rights_player_details(session, player_name, level, ranking, fv)
+        # Invalidate rights caches after admin update
+        cache.delete_memoized(_cached_rights_player_details)
         return redirect(url_for('admin_rights'))
 
     try:
-        all_rights = fetch_rights_players()
+        all_rights = _cached_rights_players()
     except Exception:
         all_rights = {}
 
-    details_map = get_all_rights_player_details(session)
+    details_map = _cached_rights_player_details()
 
     teams_rights = []
     for team_name, players in sorted(all_rights.items()):
