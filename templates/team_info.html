@@ -77,12 +77,30 @@
     <div class="alert alert-warning mt-4">Could not load keeper roster: {{ keeper_error }}</div>
     {% elif keeper_roster %}
     <div class="mt-4">
-      <h5>{{ next_year }} Keeper Calculator <small class="text-muted fs-6">$260 budget &middot; max 6 keepers</small></h5>
+      <h5>{{ next_year }} Keeper Calculator <small class="text-muted fs-6">
+        {% if budget_adjustment != 0 %}
+          ${{ base_budget }} → <strong>${{ adjusted_budget }}</strong> budget
+          <span class="{% if budget_adjustment > 0 %}text-success{% else %}text-danger{% endif %}">
+            ({{ '+' if budget_adjustment > 0 else '' }}{{ budget_adjustment }} from trades)
+          </span>
+        {% else %}
+          ${{ base_budget }} budget
+        {% endif %}
+        &middot;
+        {% if keeper_adjustment != 0 %}
+          {{ base_keeper_spots }} → <strong>{{ adjusted_keeper_spots }}</strong> keeper spots
+          <span class="{% if keeper_adjustment > 0 %}text-success{% else %}text-danger{% endif %}">
+            ({{ '+' if keeper_adjustment > 0 else '' }}{{ keeper_adjustment }} from trades)
+          </span>
+        {% else %}
+          {{ base_keeper_spots }} keepers
+        {% endif %}
+      </small></h5>
       <div class="mb-2 d-flex align-items-center gap-3">
-        <span>Remaining: <strong id="budget-remaining">$260.00</strong></span>
-        <span class="text-muted">(<span id="keeper-count">0</span>/6 selected)</span>
+        <span>Remaining: <strong id="budget-remaining">${{ adjusted_budget }}.00</strong></span>
+        <span class="text-muted">(<span id="keeper-count">0</span>/{{ adjusted_keeper_spots }} selected)</span>
         <span id="budget-warning" class="text-danger fw-bold" style="display:none;">Over budget!</span>
-        <span id="max-warning" class="text-warning fw-bold" style="display:none;">Max 6 keepers reached</span>
+        <span id="max-warning" class="text-warning fw-bold" style="display:none;">Max {{ adjusted_keeper_spots }} keepers reached</span>
       </div>
       <table class="table table-sm table-bordered sortable-table" style="max-width: 460px;">
         <thead class="table-light">
@@ -117,8 +135,8 @@
   {% if keeper_roster %}
   <script>
     (function() {
-      var BUDGET = 260;
-      var MAX_KEEPERS = 6;
+      var BUDGET = {{ adjusted_budget }};
+      var MAX_KEEPERS = {{ adjusted_keeper_spots }};
 
       function updateBudget() {
         var checked = Array.from(document.querySelectorAll('.keeper-check:checked'));

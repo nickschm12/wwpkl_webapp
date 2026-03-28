@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+  <h2>Transactions</h2>
+
+  {% if error %}
+  <div class="alert alert-warning mt-3">Could not load transactions: {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" id="txn_form">
+    <div class="row mb-3 mt-3">
+      <div class="col-sm-4">
+        <select name="year" onchange="this.form.submit()" class="form-select form-select-sm">
+          {% for y in years %}
+          <option value="{{ y }}" {{ 'selected' if y == selected }}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+
+  {% if txns %}
+  <table class="table table-sm table-hover align-middle w-auto">
+    <thead class="table-light">
+      <tr>
+        <th>Date</th>
+        <th>From</th>
+        <th>Sends</th>
+        <th>To</th>
+        <th>Sends</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in txns %}
+      <tr>
+        <td style="white-space:nowrap;">
+          <span class="text-muted" style="font-size:0.85rem;">{{ txn.date }}</span>
+          {% if txn.is_preseason %}
+          <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">Preseason</span>
+          {% endif %}
+        </td>
+        {% if txn.party_a %}
+        <td>{{ txn.party_a }}</td>
+        <td>{{ txn.a_sends }}</td>
+        <td>{{ txn.party_b }}</td>
+        <td>{{ txn.b_sends }}</td>
+        {% else %}
+        <td colspan="4" class="text-muted fst-italic">{{ txn.raw }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% elif not error %}
+  <p class="text-muted">No transactions found for {{ selected }}.</p>
+  {% endif %}
+</div>
+{% endblock %}

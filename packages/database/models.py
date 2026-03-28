@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, ForeignKey
+from sqlalchemy import Boolean, Column, Date, String, Integer, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -61,6 +61,24 @@ class WeekStats(Base):
     holds = Column(Integer)
     era = Column(Float)
     whip = Column(Float)
+
+
+class Transaction(Base):
+    __tablename__ = 'transactions'
+
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False)
+    year = Column(String(4), nullable=False)
+    party_a = Column(String(120))
+    party_b = Column(String(120))
+    a_sends = Column(String(500))
+    b_sends = Column(String(500))
+    is_preseason = Column(Boolean, default=False)
+    a_dollars = Column(Integer, default=0)
+    b_dollars = Column(Integer, default=0)
+    a_keeper_spots = Column(Integer, default=0)
+    b_keeper_spots = Column(Integer, default=0)
+    raw = Column(String(500))
 
 
 class RightsPlayerDetails(Base):

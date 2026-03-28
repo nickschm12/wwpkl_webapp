@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Transactions{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+  <h2>Admin: Transactions</h2>
+
+  {# ── Add / Edit form ──────────────────────────────────────────────────────── #}
+  <div class="card mb-4" style="max-width: 700px;">
+    <div class="card-header fw-semibold">
+      {% if edit_txn %}Edit Transaction #{{ edit_txn.id }}{% else %}Add Transaction{% endif %}
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{% if edit_txn %}/admin/transactions/edit/{{ edit_txn.id }}{% else %}/admin/transactions/add{% endif %}">
+        <input type="hidden" name="year_filter" value="{{ year_filter }}">
+
+        {# Date + Preseason #}
+        <div class="row g-2 mb-3">
+          <div class="col-sm-3">
+            <label class="form-label form-label-sm mb-0">Date</label>
+            <input type="date" name="date" class="form-control form-control-sm"
+                   value="{{ edit_txn.date_obj.isoformat() if edit_txn and edit_txn.date_obj else '' }}" required>
+          </div>
+          <div class="col-sm-3 d-flex align-items-end">
+            <div class="form-check ms-1 mb-1">
+              <input class="form-check-input" type="checkbox" name="is_preseason" id="is_preseason"
+                     {{ 'checked' if edit_txn and edit_txn.is_preseason }}>
+              <label class="form-check-label" for="is_preseason" style="font-size:0.875rem;">Preseason</label>
+            </div>
+          </div>
+        </div>
+
+        {# Party A #}
+        <div class="mb-2 fw-semibold text-muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">Party A</div>
+        <div class="row g-2 mb-3">
+          <div class="col-sm-4">
+            <label class="form-label form-label-sm mb-0">Team</label>
+            <select name="party_a" class="form-select form-select-sm">
+              <option value="">--</option>
+              {% for t in team_names %}
+              <option value="{{ t }}" {{ 'selected' if edit_txn and edit_txn.party_a == t }}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label form-label-sm mb-0">Player(s)</label>
+            <input type="text" name="a_player" class="form-control form-control-sm"
+                   value="{{ edit_txn.a_player if edit_txn else '' }}" placeholder="e.g. Juan Soto">
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label form-label-sm mb-0">Dollars</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">$</span>
+              <input type="number" name="a_dollars" class="form-control form-control-sm" min="0"
+                     value="{{ edit_txn.a_dollars if edit_txn else 0 }}">
+            </div>
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label form-label-sm mb-0">Keeper Spots</label>
+            <input type="number" name="a_keeper_spots" class="form-control form-control-sm" min="0"
+                   value="{{ edit_txn.a_keeper_spots if edit_txn else 0 }}">
+          </div>
+        </div>
+
+        {# Party B #}
+        <div class="mb-2 fw-semibold text-muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">Party B</div>
+        <div class="row g-2 mb-3">
+          <div class="col-sm-4">
+            <label class="form-label form-label-sm mb-0">Team</label>
+            <select name="party_b" class="form-select form-select-sm">
+              <option value="">--</option>
+              {% for t in team_names %}
+              <option value="{{ t }}" {{ 'selected' if edit_txn and edit_txn.party_b == t }}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label form-label-sm mb-0">Player(s)</label>
+            <input type="text" name="b_player" class="form-control form-control-sm"
+                   value="{{ edit_txn.b_player if edit_txn else '' }}" placeholder="e.g. Keeper Spot">
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label form-label-sm mb-0">Dollars</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">$</span>
+              <input type="number" name="b_dollars" class="form-control form-control-sm" min="0"
+                     value="{{ edit_txn.b_dollars if edit_txn else 0 }}">
+            </div>
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label form-label-sm mb-0">Keeper Spots</label>
+            <input type="number" name="b_keeper_spots" class="form-control form-control-sm" min="0"
+                   value="{{ edit_txn.b_keeper_spots if edit_txn else 0 }}">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary">
+            {% if edit_txn %}Save Changes{% else %}Add Transaction{% endif %}
+          </button>
+          {% if edit_txn %}
+          <a href="{{ url_for('admin_transactions', year=year_filter) }}" class="btn btn-sm btn-secondary">Cancel</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ── Year filter ──────────────────────────────────────────────────────────── #}
+  <form method="GET" class="mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <select name="year" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+        <option value="">All Years</option>
+        {% for y in years %}
+        <option value="{{ y }}" {{ 'selected' if y == year_filter }}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <span class="text-muted" style="font-size:0.85rem;">{{ txns | length }} transaction(s)</span>
+    </div>
+  </form>
+
+  {# ── Transactions table ───────────────────────────────────────────────────── #}
+  {% if txns %}
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th>From</th>
+          <th>Sends</th>
+          <th>To</th>
+          <th>Sends</th>
+          <th>Pre</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in txns %}
+        <tr {% if edit_txn and edit_txn.id == txn.id %}class="table-warning"{% endif %}>
+          <td style="white-space:nowrap; font-size:0.85rem;">{{ txn.date }}</td>
+          <td style="font-size:0.85rem;">{{ txn.party_a or '—' }}</td>
+          <td style="font-size:0.85rem;">{{ txn.a_sends or '—' }}</td>
+          <td style="font-size:0.85rem;">{{ txn.party_b or '—' }}</td>
+          <td style="font-size:0.85rem;">{{ txn.b_sends or '—' }}</td>
+          <td>{% if txn.is_preseason %}<span class="badge bg-secondary">Pre</span>{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <a href="{{ url_for('admin_transactions', year=year_filter, edit=txn.id) }}"
+               class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.75rem;">Edit</a>
+            <form method="POST" action="/admin/transactions/delete/{{ txn.id }}"
+                  style="display:inline;" onsubmit="return confirm('Delete this transaction?')">
+              <input type="hidden" name="year_filter" value="{{ year_filter }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:0.75rem;">Del</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No transactions found{% if year_filter %} for {{ year_filter }}{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

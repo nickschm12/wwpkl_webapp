@@ -5,10 +5,11 @@ import pandas as pd
 
 from sqlalchemy.orm import scoped_session
 from packages.database.queries import *
+from packages.database.models import Transaction as TransactionModel
 from packages.database import connections
 from packages.yahoo.api import get_roster
 from packages.projections import load_batting_projections, load_pitching_projections, build_lineup, normalize_name
-from packages.sheets import fetch_rights_players, fetch_keeper_costs
+from packages.sheets import fetch_rights_players, fetch_keeper_costs, fetch_transactions, compute_budget_adjustments, compute_keeper_adjustments, MANAGER_TO_TEAM
 import packages.config as config
 
 app = Flask(__name__)
@@ -100,6 +101,14 @@ def _cached_rights_players():
 def _cached_keeper_costs():
     return fetch_keeper_costs()
 
+@cache.memoize(timeout=21600)  # 6 hours — updated manually
+def _cached_transactions():
+    return fetch_transactions()
+
+@cache.memoize(timeout=300)  # 5 min — refreshed after admin edits
+def _cached_db_transactions():
+    return get_transactions(session)
+
 @cache.memoize(timeout=3600)  # 1 hour — roster changes with pickups/trades
 def _cached_roster(league_id, team_key):
     return get_roster(league_id, team_key)
@@ -107,6 +116,64 @@ def _cached_roster(league_id, team_key):
 @cache.memoize(timeout=3600)  # 1 hour
 def _cached_rights_player_details():
     return get_all_rights_player_details(session)
+
+def _fmt_txn_date(d):
+    """Format a date object as M/D/YYYY without leading zeros."""
+    if hasattr(d, 'month'):
+        return f"{d.month}/{d.day}/{d.year}"
+    return str(d) if d else ''
+
+
+def _txn_obj_to_dict(txn):
+    return {
+        'id': txn.id,
+        'date': _fmt_txn_date(txn.date),
+        'date_obj': txn.date,
+        'year': txn.year,
+        'is_preseason': txn.is_preseason,
+        'party_a': txn.party_a,
+        'party_b': txn.party_b,
+        'a_sends': txn.a_sends,
+        'b_sends': txn.b_sends,
+        'a_player': _extract_player(txn.a_sends),
+        'b_player': _extract_player(txn.b_sends),
+        'a_dollars': txn.a_dollars or 0,
+        'b_dollars': txn.b_dollars or 0,
+        'a_keeper_spots': txn.a_keeper_spots or 0,
+        'b_keeper_spots': txn.b_keeper_spots or 0,
+        'raw': txn.raw,
+    }
+
+
+def _compute_budget_adjustments_db(txns, year):
+    adjustments = {}
+    for txn in txns:
+        if txn.year != str(year) or txn.is_preseason or not txn.party_a:
+            continue
+        a, b = txn.party_a, txn.party_b
+        if txn.a_dollars:
+            adjustments[a] = adjustments.get(a, 0) - txn.a_dollars
+            adjustments[b] = adjustments.get(b, 0) + txn.a_dollars
+        if txn.b_dollars:
+            adjustments[b] = adjustments.get(b, 0) - txn.b_dollars
+            adjustments[a] = adjustments.get(a, 0) + txn.b_dollars
+    return adjustments
+
+
+def _compute_keeper_adjustments_db(txns, year):
+    adjustments = {}
+    for txn in txns:
+        if txn.year != str(year) or txn.is_preseason or not txn.party_a:
+            continue
+        a, b = txn.party_a, txn.party_b
+        if txn.a_keeper_spots:
+            adjustments[a] = adjustments.get(a, 0) - txn.a_keeper_spots
+            adjustments[b] = adjustments.get(b, 0) + txn.a_keeper_spots
+        if txn.b_keeper_spots:
+            adjustments[b] = adjustments.get(b, 0) - txn.b_keeper_spots
+            adjustments[a] = adjustments.get(a, 0) + txn.b_keeper_spots
+    return adjustments
+
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
@@ -338,6 +405,16 @@ def team_info():
     team_obj = next((t for t in results if t.name == team), None)
     league_obj = session.query(League).filter(League.year == season).first()
     next_year = int(config.CURRENT_YEAR) + 1
+    BASE_BUDGET = 260
+    BASE_KEEPER_SPOTS = 6
+    db_txns = _cached_db_transactions()
+    budget_adjustments = _compute_budget_adjustments_db(db_txns, config.CURRENT_YEAR)
+    keeper_adjustments = _compute_keeper_adjustments_db(db_txns, config.CURRENT_YEAR)
+    adjustment = budget_adjustments.get(team, 0)
+    adjusted_budget = BASE_BUDGET + adjustment
+    keeper_adj = keeper_adjustments.get(team, 0)
+    adjusted_keeper_spots = BASE_KEEPER_SPOTS + keeper_adj
+
     if team_obj and league_obj:
         try:
             roster_data = _cached_roster(league_obj.league_id, team_obj.team_key)
@@ -361,11 +438,36 @@ def team_info():
                             keeper_roster=keeper_roster,
                             keeper_error=keeper_error,
                             next_year=next_year,
+                            base_budget=BASE_BUDGET,
+                            adjusted_budget=adjusted_budget,
+                            budget_adjustment=adjustment,
+                            base_keeper_spots=BASE_KEEPER_SPOTS,
+                            adjusted_keeper_spots=adjusted_keeper_spots,
+                            keeper_adjustment=keeper_adj,
                           )
 
 @app.route('/rulebook')
 def rulebook():
     return render_template('rulebook.html', active_tab='rulebook')
+
+@app.route('/transactions', methods=['GET', 'POST'])
+def transactions():
+    try:
+        years = get_transaction_years(session)
+        error = None
+    except Exception as e:
+        years = []
+        error = str(e)
+    selected = request.form.get('year') or (years[0] if years else None)
+    txns = []
+    if selected and not error:
+        try:
+            txns = [_txn_obj_to_dict(t) for t in get_transactions(session, selected)]
+        except Exception as e:
+            error = str(e)
+    return render_template('transactions.html', active_tab='transactions',
+                           years=years, selected=selected,
+                           txns=txns, error=error)
 
 @app.route('/record_book')
 def record_book():
@@ -505,6 +607,106 @@ def admin_rights():
         teams_rights.append({'team': team_name, 'players': rows})
 
     return render_template('admin_rights.html', teams_rights=teams_rights)
+
+
+_TEAM_NAMES = sorted(MANAGER_TO_TEAM.values())
+
+
+def _build_sends(player, dollars, keeper_spots):
+    parts = []
+    if player:
+        parts.append(player)
+    if dollars:
+        parts.append(f'${dollars}')
+    if keeper_spots == 1:
+        parts.append('Keeper Spot')
+    elif keeper_spots > 1:
+        parts.append(f'{keeper_spots} Keeper Spots')
+    return ', '.join(parts) or None
+
+
+def _extract_player(sends_str):
+    """Strip dollar amounts and keeper spot mentions to get just the player name."""
+    import re as _re
+    if not sends_str:
+        return ''
+    s = _re.sub(r'\$\d+', '', sends_str)
+    s = _re.sub(r'\d*\s*Keeper Spots?', '', s, flags=_re.IGNORECASE)
+    s = _re.sub(r',\s*,', ',', s)
+    return s.strip(', ').strip()
+
+
+@app.route('/admin/transactions', methods=['GET'])
+def admin_transactions():
+    year_filter = request.args.get('year', '')
+    edit_id = request.args.get('edit')
+    years = get_transaction_years(session)
+    txns = [_txn_obj_to_dict(t) for t in get_transactions(session, year_filter if year_filter else None)]
+    edit_txn = None
+    if edit_id:
+        obj = session.query(TransactionModel).filter_by(id=int(edit_id)).first()
+        if obj:
+            edit_txn = _txn_obj_to_dict(obj)
+    return render_template('admin_transactions.html',
+                           txns=txns, years=years, year_filter=year_filter,
+                           edit_txn=edit_txn, team_names=_TEAM_NAMES)
+
+
+def _parse_txn_form():
+    from datetime import date as date_type
+    raw_date = request.form.get('date', '').strip()
+    d = date_type.fromisoformat(raw_date)
+    year = str(d.year)
+    party_a = request.form.get('party_a', '').strip() or None
+    party_b = request.form.get('party_b', '').strip() or None
+    a_player = request.form.get('a_player', '').strip()
+    b_player = request.form.get('b_player', '').strip()
+    a_dollars = int(request.form.get('a_dollars') or 0)
+    b_dollars = int(request.form.get('b_dollars') or 0)
+    a_keeper_spots = int(request.form.get('a_keeper_spots') or 0)
+    b_keeper_spots = int(request.form.get('b_keeper_spots') or 0)
+    a_sends = _build_sends(a_player, a_dollars, a_keeper_spots)
+    b_sends = _build_sends(b_player, b_dollars, b_keeper_spots)
+    is_preseason = bool(request.form.get('is_preseason'))
+    return d, year, party_a, party_b, a_sends, b_sends, is_preseason, a_dollars, b_dollars, a_keeper_spots, b_keeper_spots
+
+
+@app.route('/admin/transactions/add', methods=['POST'])
+def admin_transactions_add():
+    try:
+        d, year, party_a, party_b, a_sends, b_sends, is_preseason, a_dollars, b_dollars, a_keeper_spots, b_keeper_spots = _parse_txn_form()
+        raw = f"{party_a} sends {a_sends} to {party_b} for {b_sends}" if party_a else ''
+        insert_transaction(session, d, year, party_a, party_b, a_sends, b_sends,
+                           is_preseason, a_dollars, b_dollars, a_keeper_spots, b_keeper_spots, raw)
+        cache.delete_memoized(_cached_db_transactions)
+    except Exception:
+        pass
+    year_filter = request.form.get('year_filter', '')
+    return redirect(url_for('admin_transactions', year=year_filter))
+
+
+@app.route('/admin/transactions/edit/<int:txn_id>', methods=['POST'])
+def admin_transactions_edit(txn_id):
+    try:
+        d, year, party_a, party_b, a_sends, b_sends, is_preseason, a_dollars, b_dollars, a_keeper_spots, b_keeper_spots = _parse_txn_form()
+        raw = f"{party_a} sends {a_sends} to {party_b} for {b_sends}" if party_a else ''
+        update_transaction(session, txn_id, date=d, year=year, party_a=party_a, party_b=party_b,
+                           a_sends=a_sends, b_sends=b_sends, is_preseason=is_preseason,
+                           a_dollars=a_dollars, b_dollars=b_dollars,
+                           a_keeper_spots=a_keeper_spots, b_keeper_spots=b_keeper_spots, raw=raw)
+        cache.delete_memoized(_cached_db_transactions)
+    except Exception:
+        pass
+    year_filter = request.form.get('year_filter', '')
+    return redirect(url_for('admin_transactions', year=year_filter))
+
+
+@app.route('/admin/transactions/delete/<int:txn_id>', methods=['POST'])
+def admin_transactions_delete(txn_id):
+    delete_transaction(session, txn_id)
+    cache.delete_memoized(_cached_db_transactions)
+    year_filter = request.form.get('year_filter', '')
+    return redirect(url_for('admin_transactions', year=year_filter))
 
 
 @app.route('/projections')

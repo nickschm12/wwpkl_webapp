@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
-from .models import League, Team, SeasonStats, WeekStats, RightsPlayerDetails
+from .models import League, Team, SeasonStats, WeekStats, RightsPlayerDetails, Transaction
 from packages.projections import normalize_name
 
 def insert_league(session,league_id,name,year,num_of_teams,current_week):
@@ -177,6 +177,52 @@ def upsert_rights_player_details(session, player_name, level, ranking, fv=None):
             fv=int(fv) if fv else None,
         ))
     session.commit()
+
+
+def get_transactions(session, year=None):
+    q = session.query(Transaction)
+    if year:
+        q = q.filter(Transaction.year == str(year))
+    return q.order_by(Transaction.date.desc()).all()
+
+
+def get_transaction_years(session):
+    results = session.query(Transaction.year).distinct().order_by(Transaction.year.desc()).all()
+    return [r.year for r in results]
+
+
+def insert_transaction(session, date, year, party_a, party_b, a_sends, b_sends,
+                       is_preseason, a_dollars, b_dollars, a_keeper_spots, b_keeper_spots, raw):
+    txn = Transaction(
+        date=date, year=str(year),
+        party_a=party_a, party_b=party_b,
+        a_sends=a_sends, b_sends=b_sends,
+        is_preseason=is_preseason,
+        a_dollars=a_dollars or 0, b_dollars=b_dollars or 0,
+        a_keeper_spots=a_keeper_spots or 0, b_keeper_spots=b_keeper_spots or 0,
+        raw=raw,
+    )
+    session.add(txn)
+    session.commit()
+    return txn
+
+
+def update_transaction(session, txn_id, **kwargs):
+    txn = session.query(Transaction).filter_by(id=txn_id).first()
+    if not txn:
+        return None
+    for k, v in kwargs.items():
+        setattr(txn, k, v)
+    session.commit()
+    return txn
+
+
+def delete_transaction(session, txn_id):
+    txn = session.query(Transaction).filter_by(id=txn_id).first()
+    if txn:
+        session.delete(txn)
+        session.commit()
+    return txn
 
 
 def get_all_week_stats_all_years(engine):
