@@ -26,6 +26,11 @@ session = DBSession()
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
+    if exception:
+        try:
+            DBSession.rollback()
+        except Exception:
+            pass
     DBSession.remove()
 
 # define the the table headers for all stat tables
@@ -407,7 +412,10 @@ def team_info():
     next_year = int(config.CURRENT_YEAR) + 1
     BASE_BUDGET = 260
     BASE_KEEPER_SPOTS = 6
-    db_txns = _cached_db_transactions()
+    try:
+        db_txns = _cached_db_transactions()
+    except Exception:
+        db_txns = []
     budget_adjustments = _compute_budget_adjustments_db(db_txns, config.CURRENT_YEAR)
     keeper_adjustments = _compute_keeper_adjustments_db(db_txns, config.CURRENT_YEAR)
     adjustment = budget_adjustments.get(team, 0)

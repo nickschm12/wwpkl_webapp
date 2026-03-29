@@ -25,7 +25,8 @@ def unix_connection():
             username=secrets['db_user'],
             password=secrets['db_pw'],
             query={ 'host': host }
-        )
+        ),
+        pool_pre_ping=True,
     )
 
     return engine
@@ -46,7 +47,8 @@ def tcp_connection():
             host=db_hostname,
             port=db_port,
             database=secrets['db_name']
-        )
+        ),
+        pool_pre_ping=True,
     )
 
     return engine
