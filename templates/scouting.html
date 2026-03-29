@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Scouting Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+
+  {# ── Team pickers ─────────────────────────────────────────────────────────── #}
+  <form method="POST" class="mb-4">
+    <div class="row g-2 align-items-end">
+      <div class="col-sm-3">
+        <label class="form-label form-label-sm mb-0">My Team</label>
+        <select name="my_team" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for t in teams %}
+          <option value="{{ t }}" {{ 'selected' if t == my_team }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if max_week %}
+      <div class="col-sm-2">
+        <label class="form-label form-label-sm mb-0">Week</label>
+        <select name="week" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for w in range(1, max_week + 1) %}
+          <option value="{{ w }}" {{ 'selected' if w == selected_week }}>
+            Week {{ w }}{% if w == current_week %} (current){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if opponent %}
+  <h4 class="mb-1">
+    {{ my_team }} <span class="text-muted fw-normal">vs</span> {{ opponent }}
+    {% if live_score %}
+    <small class="fs-6 ms-2">
+      <span class="{{ 'text-success' if live_score.mine > live_score.theirs else ('text-danger' if live_score.mine < live_score.theirs else 'text-muted') }}">{{ live_score.mine }}</span>
+      <span class="text-muted fw-normal">–</span>
+      <span class="{{ 'text-success' if live_score.theirs > live_score.mine else ('text-danger' if live_score.theirs < live_score.mine else 'text-muted') }}">{{ live_score.theirs }}</span>
+      <span class="text-muted fw-normal">–{{ live_score.ties }}</span>
+    </small>
+    {% elif matchup_week %}<small class="text-muted fs-6 ms-2">Week {{ selected_week }}</small>{% endif %}
+  </h4>
+
+  {% if comparison %}
+
+  {# ── Live Matchup Stats ───────────────────────────────────────────────────── #}
+  {% if live_stats %}
+  <h6 class="text-muted text-uppercase mb-2 mt-3" style="font-size:0.75rem; letter-spacing:.07em;">Live — Week {{ matchup_week }}</h6>
+  <div class="row g-4 mb-4">
+    {% for group_label, group_key in [('Batting', 'batting'), ('Pitching', 'pitching')] %}
+    <div class="col-auto">
+      <div class="fw-semibold text-muted mb-1" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">{{ group_label }}</div>
+      <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ live_table_width }};">
+        <thead class="table-light">
+          <tr>
+            <th class="text-center" style="width:3.5rem;">Cat</th>
+            <th class="text-center" style="width:{{ team_col_width }}; white-space: nowrap; overflow: hidden;">{{ my_team | truncate(14, True, '…') }}</th>
+            <th class="text-center" style="width:{{ team_col_width }}; white-space: nowrap; overflow: hidden;">{{ opponent | truncate(14, True, '…') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in live_stats if row.group == group_key %}
+          <tr>
+            <td class="fw-semibold text-center align-middle">{{ row.label }}</td>
+            <td class="text-center {% if row.edge == 'mine' %}table-success{% elif row.edge == 'theirs' %}table-danger{% endif %}">
+              {{ row.my_val }}
+            </td>
+            <td class="text-center {% if row.edge == 'theirs' %}table-success{% elif row.edge == 'mine' %}table-danger{% endif %}">
+              {{ row.opp_val }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Synopsis ─────────────────────────────────────────────────────────────── #}
+  {% set close_cats = comparison | selectattr('edge', 'eq', 'close') | map(attribute='label') | list %}
+  <h6 class="text-muted text-uppercase mb-2" style="font-size:0.75rem; letter-spacing:.07em;">Scouting Report</h6>
+  <div class="mb-4">
+    {% if my_edges %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Clear edge</span>
+      <strong>{{ my_edges | join(', ') }}</strong>
+    </div>
+    {% endif %}
+    {% if their_edges %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Behind on</span>
+      <strong>{{ their_edges | join(', ') }}</strong>
+    </div>
+    {% endif %}
+    {% if close_cats %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Too close</span>
+      <strong>{{ close_cats | join(', ') }}</strong>
+    </div>
+    {% endif %}
+    {% if not my_edges and not their_edges %}
+    <div class="text-muted" style="font-size:0.85rem;">This matchup is very evenly matched across the board.</div>
+    {% endif %}
+  </div>
+
+  {# ── Streaming Targets ────────────────────────────────────────────────────── #}
+  {% if streaming_cats %}
+  <h6 class="text-muted text-uppercase mb-2" style="font-size:0.75rem; letter-spacing:.07em;">Streaming Targets</h6>
+  <div class="mb-4" style="max-width: 560px;">
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Categories</span>
+      <strong>{{ streaming_cats | join(', ') }}</strong>
+    </div>
+    {% if fa_batters %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Batters</span>
+      <span style="font-size:0.9rem;">{% for p in fa_batters %}{{ p.name }}{% if p.pos %} ({{ p.pos }}){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    </div>
+    {% endif %}
+    {% if fa_starters %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Starters</span>
+      <span style="font-size:0.9rem;">{% for p in fa_starters %}{{ p.name }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    </div>
+    {% endif %}
+    {% if fa_relievers %}
+    <div class="d-flex align-items-baseline mb-2">
+      <span class="text-muted flex-shrink-0" style="font-size:0.85rem; width:6rem;">Relievers</span>
+      <span style="font-size:0.9rem;">{% for p in fa_relievers %}{{ p.name }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Recent Form ──────────────────────────────────────────────────────────── #}
+  {% if recent_form %}
+  <h6 class="text-muted text-uppercase mb-2" style="font-size:0.75rem; letter-spacing:.07em;">Recent Form</h6>
+  <div class="mb-4" style="max-width: 380px;">
+    <table class="table table-sm table-bordered mb-1" style="table-layout: fixed; width: {{ recent_table_width }};">
+      <thead class="table-light">
+        <tr>
+          <th style="width:4rem;">Week</th>
+          <th class="text-center" style="width:{{ team_col_width }};">{{ my_team | truncate(14, True, '…') }}</th>
+          <th class="text-center" style="width:{{ team_col_width }};">{{ opponent | truncate(14, True, '…') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wk in recent_form %}
+        <tr>
+          <td class="text-muted">Wk {{ wk.week }}</td>
+          <td class="text-center fw-semibold
+            {% if wk.my_rank and wk.opp_rank %}
+              {% if wk.my_rank < wk.opp_rank %}text-success{% elif wk.my_rank > wk.opp_rank %}text-danger{% endif %}
+            {% endif %}">
+            {% if wk.my_rank %}#{{ wk.my_rank }}{% else %}—{% endif %}
+          </td>
+          <td class="text-center fw-semibold
+            {% if wk.my_rank and wk.opp_rank %}
+              {% if wk.opp_rank < wk.my_rank %}text-success{% elif wk.opp_rank > wk.my_rank %}text-danger{% endif %}
+            {% endif %}">
+            {% if wk.opp_rank %}#{{ wk.opp_rank }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="text-muted" style="font-size:0.75rem;">Overall roto rank for each week (1 = best)</div>
+  </div>
+  {% endif %}
+
+  {# ── Season Rankings ──────────────────────────────────────────────────────── #}
+  <h6 class="text-muted text-uppercase mb-2" style="font-size:0.75rem; letter-spacing:.07em;">Season Rankings</h6>
+  <div class="row g-4 mb-4">
+    {% for group_label, group_key in [('Batting', 'batting'), ('Pitching', 'pitching')] %}
+    <div class="col-auto">
+      <div class="fw-semibold text-muted mb-1" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.05em;">{{ group_label }}</div>
+      <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ season_table_width }};">
+        <thead class="table-light">
+          <tr>
+            <th class="text-center" style="width:3.5rem;">Cat</th>
+            <th class="text-center" style="width:{{ team_col_width }};">{{ my_team | truncate(16, True, '…') }}</th>
+            <th class="text-center" style="width:{{ team_col_width }};">{{ opponent | truncate(16, True, '…') }}</th>
+            <th class="text-center" style="width:4rem;">Var</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison if row.group == group_key %}
+          <tr>
+            <td class="fw-semibold text-center align-middle">{{ row.label }}</td>
+            <td class="text-center
+              {% if row.edge == 'mine' %}table-success
+              {% elif row.edge == 'theirs' %}table-danger
+              {% endif %}">
+              <div style="font-size:0.95rem; font-weight:600;">#{{ row.my_rank }}</div>
+              <div class="text-muted" style="font-size:0.75rem;">{{ row.my_val }}</div>
+            </td>
+            <td class="text-center
+              {% if row.edge == 'theirs' %}table-success
+              {% elif row.edge == 'mine' %}table-danger
+              {% endif %}">
+              <div style="font-size:0.95rem; font-weight:600;">#{{ row.opp_rank }}</div>
+              <div class="text-muted" style="font-size:0.75rem;">{{ row.opp_val }}</div>
+            </td>
+            <td class="text-center align-middle">
+              {% if row.volatility == 'high' %}
+              <span class="badge bg-warning text-dark" style="font-size:0.65rem;">High</span>
+              {% elif row.volatility == 'medium' %}
+              <span class="badge bg-info text-dark" style="font-size:0.65rem;">Med</span>
+              {% else %}
+              <span class="badge bg-light text-muted border" style="font-size:0.65rem;">Low</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+
+  {% else %}
+  <p class="text-muted mt-3">No stats available yet for {{ season }}.</p>
+  {% endif %}
+
+  {% else %}
+  <p class="text-muted">Select an opponent to generate a scouting report.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

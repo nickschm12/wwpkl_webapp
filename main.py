@@ -110,6 +110,55 @@ def _cached_keeper_costs():
 def _cached_transactions():
     return fetch_transactions()
 
+@cache.memoize(timeout=300)  # 5 min — scoreboard changes weekly
+def _cached_scoreboard(league_key, week):
+    from packages.yahoo.api import query_yahoo
+    data = query_yahoo(f'https://fantasysports.yahooapis.com/fantasy/v2/league/{league_key}/scoreboard;week={week}')
+    return data['fantasy_content']['league']['scoreboard']['matchups']['matchup']
+
+@cache.memoize(timeout=1800)  # 30 min — free agent pool changes slowly
+def _cached_free_agents(league_key, position, count=5):
+    from packages.yahoo.api import query_yahoo
+    url = (f'https://fantasysports.yahooapis.com/fantasy/v2/league/{league_key}'
+           f'/players;status=A;position={position};sort=AR;sort_type=season;count={count}')
+    data = query_yahoo(url)
+    players = data['fantasy_content']['league']['players'].get('player', [])
+    if isinstance(players, dict):
+        players = [players]
+    result = []
+    for p in players:
+        if isinstance(p, dict):
+            name_info = p.get('name', {})
+            name = name_info.get('full') if isinstance(name_info, dict) else None
+            ep = p.get('eligible_positions', {}).get('position', '')
+            pos = ep if isinstance(ep, str) else (ep[0] if ep else '')
+            if name:
+                result.append({'name': name, 'pos': pos})
+    return result
+
+
+@cache.memoize(timeout=300)  # 5 min — live stats update during games
+def _cached_team_week_stats(league_key, team_key, week):
+    from packages.yahoo.api import query_yahoo
+    data = query_yahoo(f'https://fantasysports.yahooapis.com/fantasy/v2/team/{league_key}.t.{team_key}/stats;type=week;week={week}')
+    return data['fantasy_content']['team']
+
+
+def _parse_yahoo_stats(team_data):
+    """Parse Yahoo team stats response into {category: value} dict."""
+    stats = {}
+    stat_list = team_data.get('team_stats', {}).get('stats', {}).get('stat', [])
+    if isinstance(stat_list, dict):
+        stat_list = [stat_list]
+    for s in stat_list:
+        cat = config.STAT_ID_TO_CAT.get(str(s.get('stat_id', '')))
+        if cat and cat not in ('N/A', 'IP'):
+            try:
+                stats[cat] = float(s.get('value') or 0)
+            except (ValueError, TypeError):
+                stats[cat] = 0.0
+    return stats
+
 @cache.memoize(timeout=300)  # 5 min — refreshed after admin edits
 def _cached_db_transactions():
     return get_transactions(session)
@@ -715,6 +764,237 @@ def admin_transactions_delete(txn_id):
     cache.delete_memoized(_cached_db_transactions)
     year_filter = request.form.get('year_filter', '')
     return redirect(url_for('admin_transactions', year=year_filter))
+
+
+_SCOUTING_CATS = [
+    ('runs',       'R',    '{:.0f}', 'batting',  False),
+    ('hits',       'H',    '{:.0f}', 'batting',  False),
+    ('homeruns',   'HR',   '{:.0f}', 'batting',  False),
+    ('rbis',       'RBI',  '{:.0f}', 'batting',  False),
+    ('sb',         'SB',   '{:.0f}', 'batting',  False),
+    ('avg',        'AVG',  '{:.3f}', 'batting',  False),
+    ('ops',        'OPS',  '{:.3f}', 'batting',  False),
+    ('wins',       'W',    '{:.0f}', 'pitching', False),
+    ('loses',      'L',    '{:.0f}', 'pitching', True),
+    ('saves',      'SV',   '{:.0f}', 'pitching', False),
+    ('strikeouts', 'SO',   '{:.0f}', 'pitching', False),
+    ('holds',      'HLD',  '{:.0f}', 'pitching', False),
+    ('era',        'ERA',  '{:.2f}', 'pitching', True),
+    ('whip',       'WHIP', '{:.2f}', 'pitching', True),
+]
+
+_CAT_TO_STAT_ID = {
+    'R': '7', 'H': '8', 'HR': '12', 'RBI': '13', 'SB': '16', 'AVG': '3', 'OPS': '55',
+    'W': '28', 'L': '29', 'SV': '32', 'SO': '42', 'HLD': '48', 'ERA': '26', 'WHIP': '27',
+}
+
+_CAT_VOLATILITY = {
+    'R': 'low', 'H': 'low', 'HR': 'medium', 'RBI': 'low', 'SB': 'high',
+    'AVG': 'low', 'OPS': 'low', 'W': 'medium', 'L': 'low', 'SV': 'high',
+    'SO': 'low', 'HLD': 'high', 'ERA': 'medium', 'WHIP': 'low',
+}
+
+
+@app.route('/scouting', methods=['GET', 'POST'])
+def scouting():
+    season = config.CURRENT_YEAR
+    MY_TEAM = 'Shmohawks'
+
+    db_teams = get_teams(session, season)
+    teams_list = [t.name for t in db_teams]
+    teams_by_name = {t.name: t for t in db_teams}
+
+    my_team = request.form.get('my_team') or MY_TEAM
+
+    # Fetch league and determine current week
+    current_week = None
+    league_obj = None
+    try:
+        league_obj = session.query(League).filter(League.year == season).first()
+        if league_obj:
+            current_week = int(league_obj.current_week)
+    except Exception:
+        pass
+
+    max_week = config.PLAYOFF_WEEK_START - 1
+    selected_week = int(request.form.get('week') or current_week or 1)
+    selected_week = max(1, min(selected_week, max_week))
+
+    # Auto-detect opponent from scoreboard for the selected week
+    matchup_week = selected_week
+    opponent = ''
+    try:
+        if league_obj:
+            matchups = _cached_scoreboard(league_obj.league_id, selected_week)
+            if isinstance(matchups, dict):
+                matchups = [matchups]
+            for m in matchups:
+                team_list_m = m['teams']['team']
+                if isinstance(team_list_m, dict):
+                    team_list_m = [team_list_m]
+                names = [tm['name'] for tm in team_list_m]
+                if my_team in names:
+                    opponent = next((n for n in names if n != my_team), '')
+                    break
+    except Exception:
+        pass
+
+    # Season-long category comparison
+    comparison = []
+    my_edges = []
+    their_edges = []
+
+    all_week_stats = _cached_all_week_stats(season)
+    regular = all_week_stats[all_week_stats['week'] < config.PLAYOFF_WEEK_START]
+
+    if not regular.empty and opponent:
+        stats_df = regular.groupby('name').agg(
+            runs=('runs','sum'), hits=('hits','sum'), homeruns=('homeruns','sum'),
+            rbis=('rbis','sum'), sb=('sb','sum'), avg=('avg','mean'),
+            ops=('ops','mean'), wins=('wins','sum'), loses=('loses','sum'),
+            saves=('saves','sum'), strikeouts=('strikeouts','sum'),
+            holds=('holds','sum'), era=('era','mean'), whip=('whip','mean'),
+        ).reset_index()
+
+        roto = calculate_roto_standings(stats_df, True)
+        num_teams = len(stats_df)
+
+        my_row = roto[roto['name'] == my_team].iloc[0] if my_team in roto['name'].values else None
+        opp_row = roto[roto['name'] == opponent].iloc[0] if opponent in roto['name'].values else None
+
+        if my_row is not None and opp_row is not None:
+            for stat, label, fmt, group, low_is_good in _SCOUTING_CATS:
+                my_raw = int(my_row[f'{stat}_rank'])
+                opp_raw = int(opp_row[f'{stat}_rank'])
+                my_rank = num_teams + 1 - my_raw
+                opp_rank = num_teams + 1 - opp_raw
+                my_val = fmt.format(my_row[stat])
+                opp_val = fmt.format(opp_row[stat])
+                diff = opp_rank - my_rank  # positive = I'm better
+                if diff >= 3:
+                    edge = 'mine'
+                    my_edges.append(label)
+                elif diff <= -3:
+                    edge = 'theirs'
+                    their_edges.append(label)
+                else:
+                    edge = 'close'
+                comparison.append({
+                    'label': label, 'group': group,
+                    'my_rank': my_rank, 'opp_rank': opp_rank,
+                    'my_val': my_val, 'opp_val': opp_val,
+                    'edge': edge,
+                    'volatility': _CAT_VOLATILITY.get(label, 'low'),
+                })
+
+    # Recent form: last 4 complete weeks
+    recent_form = []
+    if matchup_week and opponent:
+        for w in range(max(1, matchup_week - 4), matchup_week):
+            wk_data = all_week_stats[all_week_stats['week'] == w]
+            if wk_data.empty:
+                continue
+            wk_roto = calculate_roto_standings(wk_data, False)
+            wk_sorted = wk_roto.sort_values('Total Rank', ascending=False).reset_index(drop=True)
+            rank_map = {row['name']: idx + 1 for idx, row in wk_sorted.iterrows()}
+            recent_form.append({
+                'week': w,
+                'my_rank': rank_map.get(my_team),
+                'opp_rank': rank_map.get(opponent),
+            })
+
+    # Live matchup stats (only for current week)
+    live_stats = []
+    if selected_week == current_week and opponent and league_obj:
+        my_team_obj = teams_by_name.get(my_team)
+        opp_team_obj = teams_by_name.get(opponent)
+        if my_team_obj and opp_team_obj:
+            try:
+                my_live_data = _cached_team_week_stats(league_obj.league_id, my_team_obj.team_key, matchup_week)
+                opp_live_data = _cached_team_week_stats(league_obj.league_id, opp_team_obj.team_key, matchup_week)
+                my_live = _parse_yahoo_stats(my_live_data)
+                opp_live = _parse_yahoo_stats(opp_live_data)
+                for stat, label, fmt, group, low_is_good in _SCOUTING_CATS:
+                    my_v = my_live.get(label, 0.0)
+                    opp_v = opp_live.get(label, 0.0)
+                    if low_is_good:
+                        edge = 'mine' if my_v < opp_v else ('theirs' if opp_v < my_v else 'close')
+                    else:
+                        edge = 'mine' if my_v > opp_v else ('theirs' if opp_v > my_v else 'close')
+                    live_stats.append({
+                        'label': label, 'group': group,
+                        'my_val': fmt.format(my_v),
+                        'opp_val': fmt.format(opp_v),
+                        'edge': edge,
+                    })
+            except Exception:
+                pass
+
+    live_score = None
+    if live_stats:
+        my_wins = sum(1 for s in live_stats if s['edge'] == 'mine')
+        opp_wins = sum(1 for s in live_stats if s['edge'] == 'theirs')
+        ties = sum(1 for s in live_stats if s['edge'] == 'close')
+        live_score = {'mine': my_wins, 'theirs': opp_wins, 'ties': ties}
+
+    # Streaming tips based on opponent's edges
+    # Streaming targets
+    _batting_cats = ['R', 'H', 'HR', 'RBI', 'SB', 'AVG', 'OPS']
+    _sp_cats = ['W', 'SO', 'ERA', 'WHIP', 'L']
+    _rp_cats = ['SV', 'HLD']
+
+    streaming_cats = [c['label'] for c in comparison if c['edge'] == 'theirs']
+    fa_batters, fa_starters, fa_relievers = [], [], []
+
+    if league_obj and streaming_cats:
+        primary_bat = next((c for c in streaming_cats if c in _batting_cats), None)
+        primary_sp  = next((c for c in streaming_cats if c in _sp_cats), None)
+        primary_rp  = next((c for c in streaming_cats if c in _rp_cats), None)
+        try:
+            if primary_bat:
+                fa_batters = _cached_free_agents(league_obj.league_id, 'B', 5)
+        except Exception:
+            pass
+        try:
+            if primary_sp:
+                fa_starters = _cached_free_agents(league_obj.league_id, 'SP', 5)
+        except Exception:
+            pass
+        try:
+            if primary_rp:
+                fa_relievers = _cached_free_agents(league_obj.league_id, 'RP', 5)
+        except Exception:
+            pass
+
+    _name_w = max(len(my_team), len(opponent), 8) * 0.65 + 1.0
+    team_col_width = f"{_name_w:.1f}rem"
+    season_table_width = f"{3.5 + 2 * _name_w + 4.0:.1f}rem"
+    live_table_width   = f"{3.5 + 2 * _name_w:.1f}rem"
+    recent_table_width = f"{4.0 + 2 * _name_w:.1f}rem"
+
+    return render_template('scouting.html',
+                           teams=teams_list,
+                           my_team=my_team,
+                           opponent=opponent,
+                           team_col_width=team_col_width,
+                           season_table_width=season_table_width,
+                           live_table_width=live_table_width,
+                           recent_table_width=recent_table_width,
+                           matchup_week=matchup_week,
+                           selected_week=selected_week,
+                           current_week=current_week,
+                           max_week=max_week,
+                           comparison=comparison,
+                           my_edges=my_edges,
+                           their_edges=their_edges,
+                           recent_form=recent_form,
+                           live_stats=live_stats,
+                           live_score=live_score,
+                           streaming_cats=streaming_cats,
+                           fa_batters=fa_batters,
+                           fa_starters=fa_starters,
+                           fa_relievers=fa_relievers,
+                           season=season)
 
 
 @app.route('/projections')
