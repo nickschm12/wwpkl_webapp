@@ -249,7 +249,6 @@ def index():
     # get all regular season week stats (excluding playoffs)
     all_week_stats = _cached_all_week_stats(season)
     regular_season_stats = all_week_stats[all_week_stats['week'] < config.PLAYOFF_WEEK_START]
-    no_data = regular_season_stats.empty
 
     labels = []
     batting_ranks = []
@@ -258,7 +257,7 @@ def index():
     week_numbers = []
     team_week_ranks = {}
 
-    if not no_data:
+    if not regular_season_stats.empty:
         # Aggregate cumulative regular season stats from weekly data
         season_stats = regular_season_stats.groupby('name').agg(
             runs=('runs', 'sum'),
@@ -314,6 +313,27 @@ def index():
             rank_map = dict(zip(week_roto['name'], week_roto['Total Rank']))
             for team in team_names_ordered:
                 team_week_ranks[team].append(rank_map.get(team, None))
+    else:
+        # Fall back to season_stats for years with no weekly data (pre-2015)
+        season_stats = _cached_season_stats(season)
+        if not season_stats.empty:
+            season_stats = season_stats[
+                ['name','runs','hits','homeruns','rbis','sb','avg','ops',
+                 'wins','loses','saves','strikeouts','holds','era','whip']
+            ].copy()
+            season_roto = calculate_roto_standings(season_stats, False)
+            season_roto.columns = columns
+            labels = season_roto[season_roto.columns[0]]
+            batting_ranks = season_roto[season_roto.columns[8]]
+            pitching_ranks = season_roto[season_roto.columns[16]]
+            season_roto = season_roto.sort_values(by=category, ascending=ascending)
+            table_html = season_roto.to_html(
+                table_id='season-roto-table',
+                index=False,
+                classes=['table-striped','table','table-bordered','table-sm','compact','nowrap']
+            )
+
+    no_data = not table_html
 
     return render_template( 'index.html',
                             active_tab='home',
@@ -570,6 +590,12 @@ def record_book():
     season_df = _cached_all_season_stats_all_years()
     week_df = _cached_all_week_stats_all_years()
 
+    # Normalize team names to real person names
+    season_df = season_df.copy()
+    week_df = week_df.copy()
+    season_df['name'] = season_df['name'].map(lambda n: config.NAME_MAP.get(n, n))
+    week_df['name'] = week_df['name'].map(lambda n: config.NAME_MAP.get(n, n))
+
     # Exclude incomplete seasons
     season_df = season_df[(season_df['year'] != '2020') & (season_df['year'] != config.CURRENT_YEAR)]
 
@@ -582,26 +608,34 @@ def record_book():
     season_records = make_records(season_df, ['year']) if not season_df.empty else []
     week_records = make_records(week_df, ['year', 'week']) if not week_df.empty else []
 
-    # Compute roto champion per year from regular season weekly data
-    all_weeks = _cached_all_week_stats_all_years()
+    # Compute roto champion per year from regular season weekly data;
+    # fall back to season_stats for years with no weekly data (pre-2015)
+    all_weeks = week_df  # already name-mapped
+    all_seasons = season_df  # already name-mapped (pre-filter)
     roto_champs = {}
     for year in config.CHAMPIONS:
         yr_df = all_weeks[
             (all_weeks['year'] == year) &
             (all_weeks['week'] < config.PLAYOFF_WEEK_START)
         ]
-        if yr_df.empty:
+        if not yr_df.empty:
+            agg = yr_df.groupby('name').agg(
+                runs=('runs','sum'), hits=('hits','sum'), homeruns=('homeruns','sum'),
+                rbis=('rbis','sum'), sb=('sb','sum'), avg=('avg','mean'),
+                ops=('ops','mean'), wins=('wins','sum'), loses=('loses','sum'),
+                saves=('saves','sum'), strikeouts=('strikeouts','sum'),
+                holds=('holds','sum'), era=('era','mean'), whip=('whip','mean'),
+            ).reset_index()
+        else:
+            agg = all_seasons[all_seasons['year'] == year][
+                ['name','runs','hits','homeruns','rbis','sb','avg','ops',
+                 'wins','loses','saves','strikeouts','holds','era','whip']
+            ].copy()
+        if agg.empty:
             continue
-        agg = yr_df.groupby('name').agg(
-            runs=('runs','sum'), hits=('hits','sum'), homeruns=('homeruns','sum'),
-            rbis=('rbis','sum'), sb=('sb','sum'), avg=('avg','mean'),
-            ops=('ops','mean'), wins=('wins','sum'), loses=('loses','sum'),
-            saves=('saves','sum'), strikeouts=('strikeouts','sum'),
-            holds=('holds','sum'), era=('era','mean'), whip=('whip','mean'),
-        ).reset_index()
         roto = calculate_roto_standings(agg, False)
         roto_champs[year] = roto.iloc[0]['name']
-    roto_champs['2020'] = "Ms. Dean's Lean"
+    roto_champs['2020'] = 'Drew Kenavan'
 
     champions = [
         {'year': year, 'roto_champion': roto_champs.get(year), **data}
