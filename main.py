@@ -24,6 +24,11 @@ else:
 DBSession = scoped_session(sessionmaker(bind=engine))
 session = DBSession()
 
+@app.before_request
+def refresh_session():
+    global session
+    session = DBSession()
+
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     if exception:
