@@ -87,6 +87,7 @@ class RightsPlayerDetails(Base):
     id = Column(Integer, primary_key=True)
     player_name_norm = Column(String(120), unique=True, nullable=False)
     player_name = Column(String(120), nullable=False)
+    team = Column(String(120), nullable=True)
     level = Column(String(20))
     ranking = Column(Integer, nullable=True)
     fv = Column(Integer, nullable=True)

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Power Rankings{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+
+  <h5 class="mb-3">Power Rankings</h5>
+
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0 sortable-table" style="width:auto; min-width:560px;">
+      <thead class="table-light">
+        <tr>
+          <th class="text-center" style="width:2.5rem;">#</th>
+          <th style="width:14rem;">Team</th>
+          <th class="text-center" colspan="3" style="border-bottom:none;">Batting</th>
+          <th class="text-center" colspan="3" style="border-bottom:none;">Pitching</th>
+          <th class="text-center" style="width:5rem;">Total</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">For <span class="sort-icon">⇅</span></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">Against <span class="sort-icon">⇅</span></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">+/− <span class="sort-icon">⇅</span></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">For <span class="sort-icon">⇅</span></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">Against <span class="sort-icon">⇅</span></th>
+          <th class="text-center sortable" style="font-size:0.75rem; width:4rem;">+/− <span class="sort-icon">⇅</span></th>
+          <th class="sortable text-center" style="width:5rem;">+/− <span class="sort-icon">⇅</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="text-center">{{ loop.index }}</td>
+          <td class="fw-semibold">{{ row.team }}</td>
+          <td class="text-center">{{ '%.1f' % row.bat_for }}</td>
+          <td class="text-center">{{ '%.1f' % row.bat_against }}</td>
+          <td class="text-center fw-semibold {% if row.bat_diff > 0 %}text-success{% elif row.bat_diff < 0 %}text-danger{% endif %}">
+            {{ '%+.1f' % row.bat_diff }}
+          </td>
+          <td class="text-center">{{ '%.1f' % row.pit_for }}</td>
+          <td class="text-center">{{ '%.1f' % row.pit_against }}</td>
+          <td class="text-center fw-semibold {% if row.pit_diff > 0 %}text-success{% elif row.pit_diff < 0 %}text-danger{% endif %}">
+            {{ '%+.1f' % row.pit_diff }}
+          </td>
+          <td class="text-center fw-bold {% if row.total > 0 %}text-success{% elif row.total < 0 %}text-danger{% endif %}">
+            {{ '%+.1f' % row.total }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No completed weeks yet.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,11 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_caching import Cache
 import os
+import re
+import io
+import requests as http_requests
 import pandas as pd
 
 from sqlalchemy.orm import scoped_session
 from packages.database.queries import *
-from packages.database.models import Transaction as TransactionModel
+from packages.database.models import Transaction as TransactionModel, RightsPlayerDetails
 from packages.database import connections
 from packages.yahoo.api import get_roster
 from packages.projections import load_batting_projections, load_pitching_projections, build_lineup, normalize_name
@@ -13,6 +16,7 @@ from packages.sheets import fetch_rights_players, fetch_keeper_costs, fetch_tran
 import packages.config as config
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('FLASK_SECRET', 'wwpkl-dev-secret')
 
 cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 300})
 
@@ -176,6 +180,10 @@ def _cached_roster(league_id, team_key):
 def _cached_rights_player_details():
     return get_all_rights_player_details(session)
 
+@cache.memoize(timeout=3600)  # 1 hour
+def _cached_rights_players_by_team():
+    return get_rights_players_by_team(session)
+
 def _fmt_txn_date(d):
     """Format a date object as M/D/YYYY without leading zeros."""
     if hasattr(d, 'month'):
@@ -263,23 +271,12 @@ def index():
     team_week_ranks = {}
 
     if not regular_season_stats.empty:
-        # Aggregate cumulative regular season stats from weekly data
-        season_stats = regular_season_stats.groupby('name').agg(
-            runs=('runs', 'sum'),
-            hits=('hits', 'sum'),
-            homeruns=('homeruns', 'sum'),
-            rbis=('rbis', 'sum'),
-            sb=('sb', 'sum'),
-            avg=('avg', 'mean'),
-            ops=('ops', 'mean'),
-            wins=('wins', 'sum'),
-            loses=('loses', 'sum'),
-            saves=('saves', 'sum'),
-            strikeouts=('strikeouts', 'sum'),
-            holds=('holds', 'sum'),
-            era=('era', 'mean'),
-            whip=('whip', 'mean'),
-        ).reset_index()
+        # Use full season stats from DB for correct rate stats (AVG, OPS, ERA, WHIP)
+        season_stats = _cached_season_stats(season)
+        season_stats = season_stats[
+            ['name','runs','hits','homeruns','rbis','sb','avg','ops',
+             'wins','loses','saves','strikeouts','holds','era','whip']
+        ].copy()
 
         season_roto = calculate_roto_standings(season_stats, False)
         season_roto.columns = columns
@@ -668,41 +665,184 @@ def record_book():
                            season_records=season_records,
                            week_records=week_records)
 
+@app.route('/rights')
+def rights():
+    view = request.args.get('view', 'all')
+    players = _cached_rights_players_by_team()
+    team_display = {p.team: config.NAME_MAP.get(p.team, p.team) for p in players if p.team}
+
+    sorted_players = sorted(players, key=lambda p: (p.fv is None, -(p.fv or 0)))
+
+    teams = {}
+    for p in players:
+        key = p.team or 'Unknown'
+        teams.setdefault(key, []).append(p)
+    sorted_teams = sorted(teams.items(), key=lambda x: team_display.get(x[0], x[0]))
+
+    return render_template('rights.html', active_tab='rights', view=view,
+                           players=sorted_players, sorted_teams=sorted_teams,
+                           team_display=team_display)
+
+
+def _invalidate_rights_caches():
+    cache.delete_memoized(_cached_rights_player_details)
+    cache.delete_memoized(_cached_rights_players_by_team)
+
+
 @app.route('/admin/rights', methods=['GET', 'POST'])
 def admin_rights():
     if request.method == 'POST':
         for key, value in request.form.items():
             if key.startswith('level_'):
-                player_name = key[len('level_'):]
+                player_id = key[len('level_'):]
                 level   = value.strip()
-                ranking = request.form.get(f'ranking_{player_name}', '').strip()
-                fv      = request.form.get(f'fv_{player_name}', '').strip()
-                upsert_rights_player_details(session, player_name, level, ranking, fv)
-        # Invalidate rights caches after admin update
-        cache.delete_memoized(_cached_rights_player_details)
+                ranking = request.form.get(f'ranking_{player_id}', '').strip()
+                fv      = request.form.get(f'fv_{player_id}', '').strip()
+                team    = request.form.get(f'team_{player_id}', '').strip()
+                p = session.query(RightsPlayerDetails).filter_by(id=int(player_id)).first()
+                if p:
+                    p.level   = level or None
+                    p.ranking = int(ranking) if ranking else None
+                    p.fv      = int(fv) if fv else None
+                    p.team    = team or None
+                    session.commit()
+        _invalidate_rights_caches()
+        return redirect(url_for('admin_rights'))
+
+    players = get_rights_players_by_team(session)
+    teams_rights = []
+    current_team = None
+    current_players = []
+    for p in players:
+        t = p.team or 'Unknown'
+        if t != current_team:
+            if current_team is not None:
+                teams_rights.append({'team': current_team, 'players': current_players})
+            current_team = t
+            current_players = []
+        current_players.append(p)
+    if current_team is not None:
+        teams_rights.append({'team': current_team, 'players': current_players})
+
+    return render_template('admin_rights.html', teams_rights=teams_rights,
+                           team_names=sorted(MANAGER_TO_TEAM.values()))
+
+
+@app.route('/admin/rights/add', methods=['POST'])
+def admin_rights_add():
+    name  = request.form.get('player_name', '').strip()
+    team  = request.form.get('team', '').strip()
+    level   = request.form.get('level', '').strip()
+    ranking = request.form.get('ranking', '').strip()
+    fv      = request.form.get('fv', '').strip()
+    if name:
+        upsert_rights_player_details(session, name, level, ranking, fv, team=team)
+        _invalidate_rights_caches()
+    return redirect(url_for('admin_rights'))
+
+
+@app.route('/admin/rights/delete/<int:player_id>', methods=['POST'])
+def admin_rights_delete(player_id):
+    delete_rights_player(session, player_id)
+    _invalidate_rights_caches()
+    return redirect(url_for('admin_rights'))
+
+
+_MLB_LEVEL_MAP = {11: 'AAA', 12: 'AA', 13: 'A+', 14: 'A', 16: 'Rookie', 17: 'DSL'}
+
+def _build_mlb_level_index():
+    index = {}
+    for sport_id, level in _MLB_LEVEL_MAP.items():
+        try:
+            resp = http_requests.get(
+                f'https://statsapi.mlb.com/api/v1/sports/{sport_id}/players',
+                params={'season': config.CURRENT_YEAR, 'fields': 'people,id,fullName'},
+                headers={'User-Agent': 'Mozilla/5.0'},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                for p in resp.json().get('people', []):
+                    norm = normalize_name(p.get('fullName', ''))
+                    if norm:
+                        index[norm] = level
+        except Exception:
+            pass
+    return index
+
+
+@app.route('/admin/rights/refresh', methods=['POST'])
+def admin_rights_refresh():
+    mlb_index = _build_mlb_level_index()
+    players = get_rights_players_by_team(session)
+    updated = 0
+    for p in players:
+        level = mlb_index.get(normalize_name(p.player_name))
+        if level and level != p.level:
+            p.level = level
+            updated += 1
+    session.commit()
+    _invalidate_rights_caches()
+    flash(f'Levels refreshed from MLB Stats API — {updated} player(s) updated.')
+    return redirect(url_for('admin_rights'))
+
+
+# Name overrides: DB player name → FanGraphs CSV name
+_FG_NAME_OVERRIDES = {
+    'Leodalis De Vries': 'Leo De Vries',
+    'Jesus Made':        'Jesús Made',
+    'Luis Pena':         'Luis Peña',
+}
+
+def _parse_fv(val):
+    if pd.isna(val):
+        return None
+    return int(re.sub(r'[^\d]', '', str(val))) or None
+
+
+@app.route('/admin/rights/import-csv', methods=['POST'])
+def admin_rights_import_csv():
+    f = request.files.get('fg_csv')
+    if not f or not f.filename:
+        flash('No file selected.', 'danger')
         return redirect(url_for('admin_rights'))
 
     try:
-        all_rights = _cached_rights_players()
-    except Exception:
-        all_rights = {}
+        fg = pd.read_csv(io.StringIO(f.read().decode('utf-8')))
+    except Exception as e:
+        flash(f'Could not parse CSV: {e}', 'danger')
+        return redirect(url_for('admin_rights'))
 
-    details_map = _cached_rights_player_details()
+    if 'Name' not in fg.columns:
+        flash('CSV missing "Name" column — make sure this is the FanGraphs The Board export.', 'danger')
+        return redirect(url_for('admin_rights'))
 
-    teams_rights = []
-    for team_name, players in sorted(all_rights.items()):
-        rows = []
-        for name in players:
-            d = details_map.get(normalize_name(name))
-            rows.append({
-                'name':    name,
-                'level':   d.level    if d else '',
-                'ranking': d.ranking  if d else '',
-                'fv':      d.fv       if d else '',
-            })
-        teams_rights.append({'team': team_name, 'players': rows})
+    fg['_norm'] = fg['Name'].apply(normalize_name)
+    fg_index = {row['_norm']: row for _, row in fg.iterrows()}
 
-    return render_template('admin_rights.html', teams_rights=teams_rights)
+    players = get_rights_players_by_team(session)
+    matched, unmatched = 0, []
+
+    for p in players:
+        csv_name = _FG_NAME_OVERRIDES.get(p.player_name, p.player_name)
+        row = fg_index.get(normalize_name(csv_name))
+        if row is None:
+            row = fg_index.get(normalize_name(p.player_name))
+        if row is not None:
+            ranking_val = row.get('Top 100')
+            p.ranking = int(ranking_val) if ranking_val and not pd.isna(ranking_val) else None
+            p.fv = _parse_fv(row.get('FV'))
+            matched += 1
+        else:
+            unmatched.append(p.player_name)
+
+    session.commit()
+    _invalidate_rights_caches()
+
+    msg = f'FanGraphs CSV imported — {matched} matched'
+    if unmatched:
+        msg += f', {len(unmatched)} unmatched: {", ".join(unmatched)}'
+    flash(msg)
+    return redirect(url_for('admin_rights'))
 
 
 _TEAM_NAMES = sorted(MANAGER_TO_TEAM.values())
@@ -1039,6 +1179,83 @@ def scouting():
 @app.route('/projections')
 def projections():
     return render_template('projections.html', active_tab='projections')
+
+
+@cache.memoize(timeout=1800)
+def _cached_composite_scores(league_key, season, up_to_week):
+    """Compute cumulative H2H roto score differentials for all teams through week up_to_week-1.
+    FOR/AGAINST are the sum of weekly roto rank points (Batting Total Rank / Pitching Total Rank)
+    scored by each team and their opponent in each actual matchup."""
+    all_week_stats = _cached_all_week_stats(season)
+    totals = {}
+
+    for week in range(1, up_to_week):
+        try:
+            matchups = _cached_scoreboard(league_key, week)
+        except Exception:
+            continue
+        if isinstance(matchups, dict):
+            matchups = [matchups]
+
+        wk_df = all_week_stats[all_week_stats['week'] == week].copy()
+        if wk_df.empty:
+            continue
+
+        # Compute weekly roto rank points for all teams
+        roto = calculate_roto_standings(wk_df, with_ranks=True)
+        scores = {row['name'].replace('\u2019', "'").replace('\u2018', "'"): row for _, row in roto.iterrows()}
+
+        for m in matchups:
+            team_list = m['teams']['team']
+            if isinstance(team_list, dict):
+                team_list = [team_list]
+            names = [t['name'].replace('\u2019', "'").replace('\u2018', "'") for t in team_list]
+            if len(names) != 2:
+                continue
+            a, b = names[0], names[1]
+            if a not in scores or b not in scores:
+                continue
+
+            for t in (a, b):
+                if t not in totals:
+                    totals[t] = {'bf': 0.0, 'ba': 0.0, 'pf': 0.0, 'pa': 0.0}
+
+            totals[a]['bf'] += scores[a]['Batting Total Rank']
+            totals[a]['ba'] += scores[b]['Batting Total Rank']
+            totals[b]['bf'] += scores[b]['Batting Total Rank']
+            totals[b]['ba'] += scores[a]['Batting Total Rank']
+
+            totals[a]['pf'] += scores[a]['Pitching Total Rank']
+            totals[a]['pa'] += scores[b]['Pitching Total Rank']
+            totals[b]['pf'] += scores[b]['Pitching Total Rank']
+            totals[b]['pa'] += scores[a]['Pitching Total Rank']
+
+    return totals
+
+
+@app.route('/power_rankings')
+def power_rankings():
+    season = config.CURRENT_YEAR
+    league_obj = session.query(League).filter(League.year == season).first()
+    current_week = int(league_obj.current_week) if league_obj else None
+
+    rows = []
+    if league_obj and current_week and current_week > 1:
+        totals = _cached_composite_scores(league_obj.league_id, season, current_week)
+        for team, t in totals.items():
+            b_diff = t['bf'] - t['ba']
+            p_diff = t['pf'] - t['pa']
+            rows.append({
+                'team':    team,
+                'bat_for': t['bf'],  'bat_against': t['ba'],  'bat_diff': b_diff,
+                'pit_for': t['pf'],  'pit_against': t['pa'],  'pit_diff': p_diff,
+                'total':   b_diff + p_diff,
+            })
+        rows.sort(key=lambda r: r['total'], reverse=True)
+
+    return render_template('power_rankings.html',
+                           active_tab='power_rankings',
+                           rows=rows)
 
 @app.route('/ping')
 def ping():

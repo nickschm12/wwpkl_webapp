@@ -160,7 +160,14 @@ def get_all_rights_player_details(session):
     return {r.player_name_norm: r for r in session.query(RightsPlayerDetails).all()}
 
 
-def upsert_rights_player_details(session, player_name, level, ranking, fv=None):
+def get_rights_players_by_team(session):
+    """Returns list of all RightsPlayerDetails sorted by team then player name."""
+    return session.query(RightsPlayerDetails).order_by(
+        RightsPlayerDetails.team, RightsPlayerDetails.player_name
+    ).all()
+
+
+def upsert_rights_player_details(session, player_name, level, ranking, fv=None, team=None):
     norm = normalize_name(player_name)
     existing = session.query(RightsPlayerDetails).filter_by(player_name_norm=norm).first()
     if existing:
@@ -168,15 +175,25 @@ def upsert_rights_player_details(session, player_name, level, ranking, fv=None):
         existing.level = level or None
         existing.ranking = int(ranking) if ranking else None
         existing.fv = int(fv) if fv else None
+        if team is not None:
+            existing.team = team or None
     else:
         session.add(RightsPlayerDetails(
             player_name_norm=norm,
             player_name=player_name,
+            team=team or None,
             level=level or None,
             ranking=int(ranking) if ranking else None,
             fv=int(fv) if fv else None,
         ))
     session.commit()
+
+
+def delete_rights_player(session, player_id):
+    player = session.query(RightsPlayerDetails).filter_by(id=player_id).first()
+    if player:
+        session.delete(player)
+        session.commit()
 
 
 def get_transactions(session, year=None):

@@ -4,43 +4,114 @@
 
 {% block content %}
 <div class="container my-4">
-  <h2>Rights Players <small class="text-muted fs-6">admin</small></h2>
-  <p class="text-muted">Player names are pulled from the Google Sheet. Edit level and ranking here.</p>
+  <h2 class="mb-3">Rights Players <small class="text-muted fs-6">admin</small></h2>
 
-  <form method="POST">
+  {# ── Refresh / Import ───────────────────────────────────────────────────── #}
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <form method="POST" action="/admin/rights/refresh">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Refresh Levels from MLB API</button>
+    </form>
+    <form method="POST" action="/admin/rights/import-csv" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+      <input type="file" name="fg_csv" accept=".csv" class="form-control form-control-sm" style="width:260px;" required>
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Import FanGraphs CSV</button>
+    </form>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  {% for category, msg in messages %}
+  <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show py-2" role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+  {# ── Add Player ─────────────────────────────────────────────────────────── #}
+  <div class="card mb-4" style="max-width: 700px;">
+    <div class="card-header fw-semibold">Add Player</div>
+    <div class="card-body">
+      <form method="POST" action="/admin/rights/add">
+        <div class="row g-2 align-items-end">
+          <div class="col-sm-4">
+            <label class="form-label mb-1">Player Name</label>
+            <input type="text" name="player_name" class="form-control" placeholder="First Last" required>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label mb-1">Team</label>
+            <select name="team" class="form-select" required>
+              <option value="">-- select --</option>
+              {% for t in team_names %}
+              <option value="{{ t }}">{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-1">
+            <label class="form-label mb-1">Level</label>
+            <input type="text" name="level" class="form-control" placeholder="AAA">
+          </div>
+          <div class="col-sm-1">
+            <label class="form-label mb-1">Rank</label>
+            <input type="number" name="ranking" class="form-control" placeholder="#">
+          </div>
+          <div class="col-sm-1">
+            <label class="form-label mb-1">FV</label>
+            <input type="number" name="fv" class="form-control" placeholder="50">
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Add</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ── Edit existing players ──────────────────────────────────────────────── #}
+  <form method="POST" action="/admin/rights">
     {% for entry in teams_rights %}
     <h5 class="mt-4">{{ entry.team }}</h5>
     {% if entry.players %}
-    <table class="table table-sm table-bordered" style="max-width: 600px;">
+    <table class="table table-sm table-bordered" style="width:auto;">
       <thead class="table-light">
         <tr>
-          <th>Player</th>
-          <th class="sortable" style="width:6rem;cursor:pointer;">Level <span class="sort-icon text-muted">⇅</span></th>
-          <th class="sortable" style="width:7rem;cursor:pointer;">Ranking <span class="sort-icon text-muted">⇅</span></th>
-          <th class="sortable" style="width:5rem;cursor:pointer;">FV <span class="sort-icon text-muted">⇅</span></th>
+          <th style="width:160px;">Player</th>
+          <th style="width:180px;">Team</th>
+          <th style="width:80px;">Level</th>
+          <th style="width:80px;">Ranking</th>
+          <th style="width:70px;">FV</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for p in entry.players %}
         <tr>
-          <td>{{ p.name }}</td>
+          <td>{{ p.player_name }}</td>
+          <td>
+            <select name="team_{{ p.id }}" class="form-select form-select-sm">
+              {% for t in team_names %}
+              <option value="{{ t }}" {{ 'selected' if p.team == t }}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </td>
           <td>
             <input type="text" class="form-control form-control-sm"
-                   name="level_{{ p.name }}"
-                   value="{{ p.level }}"
-                   placeholder="AAA">
+                   name="level_{{ p.id }}" value="{{ p.level or '' }}" placeholder="AAA">
           </td>
           <td>
             <input type="number" class="form-control form-control-sm"
-                   name="ranking_{{ p.name }}"
-                   value="{{ p.ranking }}"
-                   placeholder="#">
+                   name="ranking_{{ p.id }}" value="{{ p.ranking or '' }}" placeholder="#">
           </td>
           <td>
             <input type="number" class="form-control form-control-sm"
-                   name="fv_{{ p.name }}"
-                   value="{{ p.fv }}"
-                   placeholder="50">
+                   name="fv_{{ p.id }}" value="{{ p.fv or '' }}" placeholder="50">
+          </td>
+          <td>
+            <form method="POST" action="/admin/rights/delete/{{ p.id }}"
+                  style="display:inline;" onsubmit="return confirm('Remove {{ p.player_name }}?')">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1"
+                      style="font-size:0.75rem;">Del</button>
+            </form>
           </td>
         </tr>
         {% endfor %}
@@ -51,7 +122,7 @@
     {% endif %}
     {% endfor %}
 
-    <button type="submit" class="btn btn-primary mt-3">Save</button>
+    <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
   </form>
 </div>
 {% endblock %}

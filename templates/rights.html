@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Rights Players{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+
+  <h5 class="mb-2">Rights Players</h5>
+
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link {% if view == 'all' %}active{% endif %}" href="?view=all">All Players</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if view == 'team' %}active{% endif %}" href="?view=team">By Team</a>
+    </li>
+  </ul>
+
+  {% if view == 'all' %}
+
+  <table class="table table-sm table-hover align-middle record-book-table sortable-table w-auto">
+    <thead>
+      <tr>
+        <th class="sortable">Player <span class="sort-icon">⇅</span></th>
+        <th class="sortable">Team <span class="sort-icon">⇅</span></th>
+        <th class="sortable">Level <span class="sort-icon">⇅</span></th>
+        <th class="sortable">Ranking <span class="sort-icon">⇅</span></th>
+        <th class="sortable" data-default-desc>FV <span class="sort-icon">⇅</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in players %}
+      <tr>
+        <td>{{ p.player_name }}</td>
+        <td>{{ team_display.get(p.team, p.team or '—') }}</td>
+        <td>{{ p.level or '—' }}</td>
+        <td>{{ p.ranking or '—' }}</td>
+        <td>{{ p.fv or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% else %}
+
+  {% for team_key, team_players in sorted_teams %}
+  <h6 class="mt-4 mb-1 fw-semibold">{{ team_display[team_key] }}</h6>
+  <table class="table table-sm table-hover align-middle record-book-table sortable-table" style="width:420px;">
+    <colgroup>
+      <col style="width:200px;">
+      <col style="width:70px;">
+      <col style="width:90px;">
+      <col style="width:60px;">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="sortable">Player <span class="sort-icon">⇅</span></th>
+        <th class="sortable">Level <span class="sort-icon">⇅</span></th>
+        <th class="sortable">Ranking <span class="sort-icon">⇅</span></th>
+        <th class="sortable" data-default-desc>FV <span class="sort-icon">⇅</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in team_players %}
+      <tr>
+        <td>{{ p.player_name }}</td>
+        <td>{{ p.level or '—' }}</td>
+        <td>{{ p.ranking or '—' }}</td>
+        <td>{{ p.fv or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

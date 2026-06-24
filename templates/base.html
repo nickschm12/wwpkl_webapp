@@ -31,6 +31,9 @@
             <a class="nav-link {% if active_tab == 'transactions' %}active{% endif %}" href="/transactions">Transactions</a>
           </li>
           <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'rights' %}active{% endif %}" href="/rights">Rights</a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link {% if active_tab == 'rulebook' %}active{% endif %}" href="/rulebook">Rulebook</a>
           </li>
           <li class="nav-item">
@@ -38,6 +41,9 @@
           </li>
           <li class="nav-item">
             <a class="nav-link {% if active_tab == 'projections' %}active{% endif %}" href="/projections">Projections</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'power_rankings' %}active{% endif %}" href="/power_rankings">Power Rankings</a>
           </li>
         </ul>
       </div>
@@ -99,17 +105,25 @@
         });
       });
 
-      // Default sort by Rank ascending, or Cost descending if no Rank column
-      var rankTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
-        return th.textContent.trim().startsWith('Rank');
-      });
-      if (rankTh) {
-        rankTh.click();
+      // Default sort: data-default-desc (2 clicks) > data-default-asc (1 click) > Rank asc > Cost desc
+      var defaultDescTh = table.querySelector('th.sortable[data-default-desc]');
+      var defaultAscTh = table.querySelector('th.sortable[data-default-asc]');
+      if (defaultDescTh) {
+        defaultDescTh.click(); defaultDescTh.click();
+      } else if (defaultAscTh) {
+        defaultAscTh.click();
       } else {
-        var costTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
-          return th.textContent.trim().startsWith('Cost');
+        var rankTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
+          return th.textContent.trim().startsWith('Rank');
         });
-        if (costTh) { costTh.click(); costTh.click(); } // two clicks = descending
+        if (rankTh) {
+          rankTh.click();
+        } else {
+          var costTh = Array.from(table.querySelectorAll('th.sortable')).find(function(th) {
+            return th.textContent.trim().startsWith('Cost');
+          });
+          if (costTh) { costTh.click(); costTh.click(); }
+        }
       }
     });
   </script>
